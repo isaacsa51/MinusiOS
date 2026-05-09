@@ -12,10 +12,12 @@ protocol TransactionRepository {
     // generate crud functions, async defines that the function is "suspended" (unidirectional)
     // throws defines that this function can fail
     func save(transaction: Transaction) async throws
+    
+    func delete(transactionId: UUID) async throws
    
     func getTransaction(id: UUID) async throws -> Transaction?
     
-    func getAllTransaction() async throws -> [Transaction]
+    func getAllTransactions() async throws -> [Transaction]
     
     func getTransactions(forPeriod periodId: UUID) async throws -> [Transaction]
     

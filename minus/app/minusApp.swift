@@ -6,12 +6,23 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct minusApp: App {
     
     // Create single instance of the navigator(router)
     @State private var router = NavigationRouter()
+    
+    let container: ModelContainer
+    
+    init() {
+        do {
+            container = try ModelContainer(for: TransactionEntity.self)
+        } catch {
+            fatalError("Error trying to init database: \(error.localizedDescription)")
+        }
+    }
     
     var body: some Scene {
         WindowGroup {
@@ -28,6 +39,7 @@ struct minusApp: App {
                     }
                     .environment(router)
             }
+            .modelContainer(container)
         }
     }
 }

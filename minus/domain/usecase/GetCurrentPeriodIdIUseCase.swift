@@ -15,6 +15,6 @@ class GetCurrentPeriodIdIUseCase {
     }
     
     func execute() async throws -> PeriodKey? {
-        return try await repository.getPeriod()
+        return try await repository.getActivePeriod()
     }
 }

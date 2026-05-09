@@ -8,7 +8,7 @@
 import Foundation
 
 enum BudgetPeriod{
-    case DAILY, WEEKLY, BIWEEKLY, MONTHLY
+    case daily, weekly, biweekly, monthly
 }
 
 enum RemainingBudgetStrategy {
@@ -32,10 +32,10 @@ struct BudgetSettings {
         let baseDays: Int
         
         switch period {
-            case .DAILY: baseDays = 1
-            case .WEEKLY: baseDays = 7
-            case .BIWEEKLY: baseDays = 14
-            case .MONTHLY: baseDays = 30
+            case .daily: baseDays = 1
+            case .weekly: baseDays = 7
+            case .biweekly: baseDays = 14
+            case .monthly: baseDays = 30
         }
         
         return Swift.max(baseDays, daysInPeriod)
@@ -68,7 +68,7 @@ struct BudgetSettings {
     
     static let `default` = BudgetSettings(
         totalBudget: .zero,
-        period: .DAILY,
+        period: .daily,
         startDate: Date()
     )
 }

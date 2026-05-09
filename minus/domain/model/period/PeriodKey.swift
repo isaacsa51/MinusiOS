@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum PeriodMappingNode {
+enum PeriodMappingNode: String {
     case activeBucket
     case calendarBucket
 }

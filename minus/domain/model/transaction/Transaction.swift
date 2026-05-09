@@ -23,7 +23,5 @@ struct Transaction: Identifiable {
 }
 
 enum RecurrentFrequency {
-    case WEEKLY
-    case BIWEEKLY
-    case DAILY
+    case WEEKLY, BIWEEKLY, DAILY
 }
