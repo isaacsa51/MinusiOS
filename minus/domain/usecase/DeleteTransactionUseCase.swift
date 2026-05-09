@@ -6,3 +6,15 @@
 //
 
 import Foundation
+
+class DeleteTransactionUseCase {
+    private let repository: TransactionRepository
+    
+    init(repository: TransactionRepository) {
+        self.repository = repository
+    }
+    
+    func execute(transactionId: UUID) async throws {
+        try await repository.getTransaction(id: transactionId)
+    }
+}
