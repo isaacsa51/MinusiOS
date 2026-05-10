@@ -69,6 +69,4 @@ struct NumpadButton: View {
         case .number, .op: return .white
         }
     }
-    
-    
 }

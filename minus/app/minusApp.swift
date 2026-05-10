@@ -16,6 +16,8 @@ struct minusApp: App {
     
     let container: ModelContainer
     
+    @AppStorage("selectedAppTheme") private var appTheme: ThemeManager = .system
+    
     init() {
         do {
             container = try ModelContainer(for: TransactionEntity.self)
@@ -38,6 +40,7 @@ struct minusApp: App {
                         }
                     }
                     .environment(router)
+                    .preferredColorScheme(appTheme.colorScheme)
             }
             .modelContainer(container)
         }
