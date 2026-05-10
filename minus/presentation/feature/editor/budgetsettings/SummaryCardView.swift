@@ -14,27 +14,29 @@ struct SummaryCardView: View {
                 Text("Presupuesto total")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-                
+                    .foregroundStyle(Color.minus.textSecondary)
+
                 Button(action: { /* Editar */ }) {
                     Image(systemName: "pencil.line")
                         .font(.system(size: 14))
+                        .foregroundStyle(Color.minus.textPrimary)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "chevron.right")
                     .font(.caption2)
-                    .foregroundColor(.gray.opacity(0.5))
+                    .foregroundStyle(Color.minus.textSecondary.opacity(0.6))
             }
-            
+
             HStack(alignment: .center, spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("$20,326.53")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.8)
                         .lineLimit(1)
-                    
+                        .foregroundStyle(Color.minus.textPrimary)
+
                     HStack(spacing: 4) {
                         Text("30 abr")
                         Image(systemName: "arrow.right")
@@ -43,39 +45,43 @@ struct SummaryCardView: View {
                     }
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(Color.minus.textSecondary)
                 }
-                
+
                 Spacer()
-                
+
                 ZStack {
                     Circle()
-                        .stroke(Color.gray.opacity(0.15), lineWidth: 6)
+                        .stroke(Color.minus.divider, lineWidth: 6)
                     Circle()
                         .trim(from: 0, to: 0.6)
-                        .stroke(Color.green, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .stroke(Color.minus.success, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                    
+
                     VStack(spacing: 0) {
                         Text("6")
                             .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color.minus.textPrimary)
                         Text("días")
                             .font(.system(size: 8, weight: .medium))
                             .textCase(.uppercase)
+                            .foregroundStyle(Color.minus.textSecondary)
                     }
                 }
                 .frame(width: 60, height: 60)
             }
         }
         .padding(20)
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .background(Color.minus.surface)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.03), radius: 10, x: 0, y: 5)
+        .shadow(color: Color.primary.opacity(0.12), radius: 10, x: 0, y: 5)
     }
 }
 
 #Preview {
     SummaryCardView()
+        .padding()
+        .background(Color.minus.background)
 }
 
 struct PeriodCard: View {
@@ -83,7 +89,7 @@ struct PeriodCard: View {
     let amount: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 8) {
@@ -91,21 +97,21 @@ struct PeriodCard: View {
                     .font(.caption)
                     .fontWeight(.bold)
                     .textCase(.uppercase)
-                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
-                
+                    .foregroundStyle(isSelected ? Color.minus.textPrimary.opacity(0.8) : Color.minus.textSecondary)
+
                 Text(amount)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(isSelected ? .white : .primary)
+                    .foregroundStyle(isSelected ? Color.minus.textPrimary : Color.minus.textPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 16)
             .padding(.horizontal, 16)
-            .background(isSelected ? Color.green.opacity(0.8) : Color(uiColor: .secondarySystemGroupedBackground))
+            .background(isSelected ? Color.minus.primaryAction.opacity(0.8) : Color.minus.surface)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isSelected ? Color.clear : Color.gray.opacity(0.1), lineWidth: 1)
+                    .stroke(isSelected ? Color.clear : Color.minus.divider, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

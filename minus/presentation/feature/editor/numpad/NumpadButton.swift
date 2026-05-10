@@ -27,46 +27,51 @@ struct NumpadButton: View {
     let type: NumpadButtonType
     var isTall: Bool = false
     let action: () -> Void
-    
+
     var body: some View {
-            if isTall {
-                buttonContent
-            } else {
-                buttonContent.aspectRatio(1, contentMode: .fit)
-            }
+        if isTall {
+            buttonContent
+        } else {
+            buttonContent.aspectRatio(1, contentMode: .fit)
         }
-    
+    }
+
     private var buttonContent: some View {
         Button(action: action) {
             Group {
                 if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: 28, weight: .semibold))
-                    } else if let label = label {
-                        Text(label)
-                            .font(.system(size: 34, weight: .regular))
-                    }
+                } else if let label = label {
+                    Text(label)
+                        .font(.system(size: 34, weight: .regular))
                 }
-                .foregroundColor(buttonForegroundColor)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(buttonBackgroundColor)
-                .clipShape(Capsule())
             }
-        .background(Color.black)
+            .foregroundStyle(buttonForegroundColor)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(buttonBackgroundColor)
+            .clipShape(Capsule())
+        }
+        .background(Color.minus.background)
     }
-    
-    private var buttonBackgroundColor: Color{
+
+    private var buttonBackgroundColor: Color {
         switch type {
-        case .number: return Color(.darkGray).opacity(0.8)
-        case .action: return Color(.lightGray).opacity(0.8)
-        case .op: return .orange
+        case .number:
+            return Color.minus.surface
+        case .action:
+            return Color.minus.surfaceSecondary
+        case .op:
+            return Color.minus.primaryAction
         }
     }
-    
+
     private var buttonForegroundColor: Color {
         switch type {
-        case .action: return .black
-        case .number, .op: return .white
+        case .action:
+            return Color.minus.textPrimary
+        case .number, .op:
+            return Color.minus.textPrimary
         }
     }
 }

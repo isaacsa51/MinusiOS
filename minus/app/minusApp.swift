@@ -10,14 +10,13 @@ import SwiftData
 
 @main
 struct minusApp: App {
-    
+
     // Create single instance of the navigator(router)
     @State private var router = NavigationRouter()
-    
+    @State private var themeManager = ThemeManager()
+
     let container: ModelContainer
-    
-    @AppStorage("selectedAppTheme") private var appTheme: ThemeManager = .system
-    
+
     init() {
         do {
             container = try ModelContainer(for: TransactionEntity.self)
@@ -25,7 +24,7 @@ struct minusApp: App {
             fatalError("Error trying to init database: \(error.localizedDescription)")
         }
     }
-    
+
     var body: some Scene {
         WindowGroup {
             NavigationStack(path: $router.path) {
@@ -34,14 +33,19 @@ struct minusApp: App {
                     .navigationDestination(for: Destinations.self) { destination in
                         // here the Router checks what to render
                         switch destination {
-                        case .editor: EditorView()
-                        case .settings: Text("Settings screen")
-                        case .history: Text("Transactions History screen...")
+                        case .editor:
+                            EditorView()
+                        case .settings:
+                            SettingsView()
+                        case .history:
+                            Text("Transactions History screen...")
                         }
                     }
                     .environment(router)
-                    .preferredColorScheme(appTheme.colorScheme)
             }
+            .preferredColorScheme(themeManager.colorScheme)
+            .tint(Color.minus.primaryAction)
+            .environment(themeManager)
             .modelContainer(container)
         }
     }

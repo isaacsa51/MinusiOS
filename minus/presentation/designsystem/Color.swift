@@ -13,15 +13,19 @@ extension Color {
 
 struct MinusTheme {
     // main colors
-    let background = Color.black
-    let surface = Color(uiColor: .darkGray).opacity(0.8)
-    let surfaceSecondary = Color(.secondarySystemGroupedBackground)
-    
+    let background = Color(uiColor: .systemBackground)
+    let surface = Color(uiColor: .secondarySystemBackground)
+    let surfaceSecondary = Color(uiColor: .tertiarySystemBackground)
+
     // accents
-    let primaryAction = Color(red: 0.85, green: 0.45, blue: 0.25)
-    let success = Color(red: 0.3, green: 0.4, blue: 0.2)
+    let primaryAction = Color(red: 0.19, green: 0.72, blue: 0.39)
+    let success = Color(red: 0.29, green: 0.86, blue: 0.48)
     let destructive = Color.red
-    
+
     // texts
-    let textPrimary = Color.white
-    let textSecondary = Color.gray}
+    let textPrimary = Color.primary
+    let textSecondary = Color.secondary
+
+    // utilities
+    let divider = Color.primary.opacity(0.15)
+}

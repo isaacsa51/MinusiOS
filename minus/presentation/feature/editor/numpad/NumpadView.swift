@@ -9,7 +9,7 @@ import SwiftUI
 
 struct NumpadView: View {
     let onButtonTapped: (NumpadButtonArgs) -> Void
-    
+
     let columnsMatrix: [[NumpadButtonArgs]] = [
         [
             NumpadButtonArgs(label: nil, icon: "divide", type: .op),
@@ -38,7 +38,7 @@ struct NumpadView: View {
             NumpadButtonArgs(label: nil, icon: "checkmark", isTall: true, type: .op)
         ]
     ]
-    
+
     var body: some View {
         HStack(spacing: 12) {
             ForEach(columnsMatrix.indices, id: \.self) { colIndex in
@@ -52,7 +52,7 @@ struct NumpadView: View {
                 .frame(maxHeight: .infinity)
             }
         }
-        .background(Color.black)
+        .background(Color.minus.background)
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 16)
     }

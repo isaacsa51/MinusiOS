@@ -7,19 +7,22 @@
 
 import SwiftUI
 
-enum ThemeManager: String, CaseIterable {
-    case system = "system"
-    case light = "light"
-    case dark = "dark"
-    
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system:
-            return nil
-        case .light:
-            return .light
-        case .dark:
-            return .dark
+@Observable
+final class ThemeManager {
+    private let storageKey = "app_theme_mode"
+
+    var selectedMode: AppThemeMode {
+        didSet {
+            UserDefaults.standard.set(selectedMode.rawValue, forKey: storageKey)
         }
+    }
+
+    init() {
+        let savedModeRawValue = UserDefaults.standard.string(forKey: storageKey)
+        selectedMode = AppThemeMode(rawValue: savedModeRawValue ?? "") ?? .system
+    }
+
+    var colorScheme: ColorScheme? {
+        selectedMode.colorScheme
     }
 }

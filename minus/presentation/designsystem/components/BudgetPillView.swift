@@ -7,23 +7,23 @@
 
 import SwiftUI
 
-struct BudgetPillView: View{
+struct BudgetPillView: View {
     var title: String = "Para hoy"
     var amount: String = "1,270.23"
-    
-    var pillColor: Color = Color(red: 0.85, green: 0.35, blue: 025)
-    
+
+    var pillColor: Color = Color.minus.primaryAction
+
     var body: some View {
         HStack {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.8))
-            
+                .foregroundStyle(Color.minus.textPrimary.opacity(0.8))
+
             Spacer()
-            
+
             Text(amount)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundStyle(Color.minus.textPrimary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -37,5 +37,5 @@ struct BudgetPillView: View{
 }
 
 #Preview {
-    BudgetPillView(title: "Para Hoy", amount: "$ 123.12", pillColor: Color.green)
+    BudgetPillView(title: "Para Hoy", amount: "$ 123.12", pillColor: Color.minus.success)
 }
