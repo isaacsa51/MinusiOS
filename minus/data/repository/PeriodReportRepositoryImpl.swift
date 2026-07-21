@@ -20,7 +20,12 @@ class PeriodReportRepositoryImpl: PeriodRepository {
             id: period.id,
             startDate: period.startDate,
             endDate: period.endDate,
-            mappingMode: period.mappingNode.rawValue
+            mappingMode: period.mappingNode.rawValue,
+            totalBudget: NSDecimalNumber(decimal: period.totalBudget).doubleValue,
+            currency: period.currency,
+            remainingStrategy: period.remainingStrategy.rawValue,
+            periodType: period.periodType.rawValue,
+            daysInPeriod: period.daysInPeriod
         )
         
         context.insert(entity)
@@ -78,7 +83,12 @@ class PeriodReportRepositoryImpl: PeriodRepository {
             id: entity.id,
             startDate: entity.startDate,
             endDate: entity.endDate,
-            mappingNode: PeriodMappingNode(rawValue: entity.mappingMode) ?? .activeBucket
+            mappingNode: PeriodMappingNode(rawValue: entity.mappingMode) ?? .activeBucket,
+            totalBudget: Decimal(entity.totalBudget),
+            currency: entity.currency,
+            remainingStrategy: RemainingBudgetStrategy(rawValue: entity.remainingStrategy) ?? .ASK_ALWAYS,
+            periodType: BudgetPeriod(rawValue: entity.periodType) ?? .monthly,
+            daysInPeriod: entity.daysInPeriod
         )
     }
 }

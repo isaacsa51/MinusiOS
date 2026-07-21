@@ -7,11 +7,11 @@
 
 import Foundation
 
-enum BudgetPeriod{
+enum BudgetPeriod: String, CaseIterable {
     case daily, weekly, biweekly, monthly
 }
 
-enum RemainingBudgetStrategy {
+enum RemainingBudgetStrategy: String, CaseIterable {
     case ASK_ALWAYS, SPLIT_EQUALLY, ADD_TO_FIRST_DAY
 }
 

@@ -17,4 +17,9 @@ struct PeriodKey: Identifiable {
     let startDate: Date
     let endDate: Date?
     let mappingNode: PeriodMappingNode
+    let totalBudget: Decimal
+    let currency: String
+    let remainingStrategy: RemainingBudgetStrategy
+    let periodType: BudgetPeriod
+    let daysInPeriod: Int
 }

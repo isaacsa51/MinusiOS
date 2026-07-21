@@ -7,10 +7,13 @@
 
 import Foundation
 import SwiftUI
+import SwiftData
 
 struct EditorView: View {
-    @Environment(NavigationRouter.self) var router // here we get the instace of Router
+    @Environment(NavigationRouter.self) var router
+    @Environment(\.modelContext) private var modelContext
     @State private var viewModel = EditorViewModel()
+    @State private var budgetVM: BudgetPeriodViewModel?
     @State private var isShowingBudgetDetailsSheet = false
     @State private var isShowingHistorySheet = false
     @State private var amountDragOffset: CGFloat = 0
@@ -24,7 +27,11 @@ struct EditorView: View {
                 Button(action: {
                     isShowingBudgetDetailsSheet = true
                 }) {
-                    BudgetPillView(title: "Para hoy", amount: "$1,225.22")
+                    BudgetPillView(
+                        title: budgetVM?.pillTitle ?? "Cargando...",
+                        amount: budgetVM?.pillAmount ?? "...",
+                        pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary
+                    )
                 }
                 .buttonStyle(.plain)
 
@@ -79,8 +86,24 @@ struct EditorView: View {
         .frame(maxWidth: .infinity)
         .background(Color.minus.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task {
+            if budgetVM == nil {
+                budgetVM = BudgetPeriodViewModel(context: modelContext)
+            }
+            await budgetVM?.checkActivePeriod()
+        }
         .sheet(isPresented: $isShowingBudgetDetailsSheet) {
-            BudgetDetailsSheet()
+            if let vm = budgetVM {
+                BudgetDetailsSheet(viewModel: vm)
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { budgetVM?.showNewBudgetSheet ?? false },
+            set: { budgetVM?.showNewBudgetSheet = $0 }
+        )) {
+            if let vm = budgetVM {
+                NewBudgetPeriodSheet(viewModel: vm)
+            }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
             HistoryView()

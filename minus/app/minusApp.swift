@@ -19,7 +19,7 @@ struct minusApp: App {
 
     init() {
         do {
-            container = try ModelContainer(for: TransactionEntity.self)
+            container = try ModelContainer(for: TransactionEntity.self, PeriodEntity.self)
         } catch {
             fatalError("Error trying to init database: \(error.localizedDescription)")
         }

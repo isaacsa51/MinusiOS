@@ -8,6 +8,69 @@
 import SwiftUI
 
 struct SummaryCardView: View {
+    let period: PeriodKey?
+
+    private var formattedBudget: String {
+        guard let p = period else { return "$0" }
+        let symbol = Currency.find(byCode: p.currency)?.symbol ?? "$"
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return "\(symbol)\(formatter.string(from: p.totalBudget as NSDecimalNumber) ?? "0.00")"
+    }
+
+    private var startDateText: String {
+        guard let p = period else { return "--" }
+        return Self.shortDateFormatter.string(from: p.startDate)
+    }
+
+    private var endDateText: String {
+        guard let p = period else { return "--" }
+        let endDate = p.endDate ?? BudgetSettings(
+            totalBudget: p.totalBudget,
+            period: p.periodType,
+            startDate: p.startDate,
+            daysInPeriod: p.daysInPeriod
+        ).getPeriodEndDate()
+        return Self.shortDateFormatter.string(from: endDate)
+    }
+
+    private var daysRemaining: Int {
+        guard let p = period else { return 0 }
+        let endDate = p.endDate ?? BudgetSettings(
+            totalBudget: p.totalBudget,
+            period: p.periodType,
+            startDate: p.startDate,
+            daysInPeriod: p.daysInPeriod
+        ).getPeriodEndDate()
+        return max(0, Calendar.current.dateComponents([.day], from: Date(), to: endDate).day ?? 0)
+    }
+
+    private var totalDays: Int {
+        guard let p = period else { return 1 }
+        let endDate = p.endDate ?? BudgetSettings(
+            totalBudget: p.totalBudget,
+            period: p.periodType,
+            startDate: p.startDate,
+            daysInPeriod: p.daysInPeriod
+        ).getPeriodEndDate()
+        return max(1, Calendar.current.dateComponents([.day], from: p.startDate, to: endDate).day ?? 1)
+    }
+
+    private var progressFraction: CGFloat {
+        let remaining = CGFloat(daysRemaining)
+        let total = CGFloat(totalDays)
+        return total > 0 ? remaining / total : 0
+    }
+
+    private static let shortDateFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "d MMM"
+        fmt.locale = Locale(identifier: "es_MX")
+        return fmt
+    }()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
@@ -15,12 +78,6 @@ struct SummaryCardView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(Color.minus.textSecondary)
-
-                Button(action: { /* Editar */ }) {
-                    Image(systemName: "pencil.line")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.minus.textPrimary)
-                }
 
                 Spacer()
 
@@ -31,17 +88,17 @@ struct SummaryCardView: View {
 
             HStack(alignment: .center, spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("$20,326.53")
+                    Text(formattedBudget)
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.8)
                         .lineLimit(1)
                         .foregroundStyle(Color.minus.textPrimary)
 
                     HStack(spacing: 4) {
-                        Text("30 abr")
+                        Text(startDateText)
                         Image(systemName: "arrow.right")
                             .font(.system(size: 10))
-                        Text("15 may")
+                        Text(endDateText)
                     }
                     .font(.caption)
                     .fontWeight(.medium)
@@ -54,12 +111,12 @@ struct SummaryCardView: View {
                     Circle()
                         .stroke(Color.minus.divider, lineWidth: 6)
                     Circle()
-                        .trim(from: 0, to: 0.6)
+                        .trim(from: 0, to: progressFraction)
                         .stroke(Color.minus.success, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .rotationEffect(.degrees(-90))
 
                     VStack(spacing: 0) {
-                        Text("6")
+                        Text("\(daysRemaining)")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(Color.minus.textPrimary)
                         Text("días")
@@ -79,7 +136,7 @@ struct SummaryCardView: View {
 }
 
 #Preview {
-    SummaryCardView()
+    SummaryCardView(period: nil)
         .padding()
         .background(Color.minus.background)
 }

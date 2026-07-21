@@ -14,11 +14,31 @@ class PeriodEntity {
     var startDate: Date
     var endDate: Date?
     var mappingMode: String
+    var totalBudget: Double
+    var currency: String
+    var remainingStrategy: String
+    var periodType: String
+    var daysInPeriod: Int
     
-    init(id: UUID, startDate: Date, endDate: Date? = nil, mappingMode: String) {
+    init(
+        id: UUID,
+        startDate: Date,
+        endDate: Date? = nil,
+        mappingMode: String,
+        totalBudget: Double = 0,
+        currency: String = "USD",
+        remainingStrategy: String = "ASK_ALWAYS",
+        periodType: String = "monthly",
+        daysInPeriod: Int = 30
+    ) {
         self.id = id
         self.startDate = startDate
         self.endDate = endDate
         self.mappingMode = mappingMode
+        self.totalBudget = totalBudget
+        self.currency = currency
+        self.remainingStrategy = remainingStrategy
+        self.periodType = periodType
+        self.daysInPeriod = daysInPeriod
     }
 }
