@@ -39,6 +39,8 @@ struct minusApp: App {
                             SettingsView()
                         case .history:
                             Text("Transactions History screen...")
+                        case .analytics:
+                            Text("Analytics screen...")
                         }
                     }
                     .environment(router)

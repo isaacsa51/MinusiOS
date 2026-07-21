@@ -8,5 +8,6 @@
 enum Destinations: Hashable {
     case editor
     case history
+    case analytics
     case settings
 }

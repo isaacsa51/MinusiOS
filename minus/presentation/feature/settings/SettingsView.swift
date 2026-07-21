@@ -13,9 +13,22 @@ struct SettingsView: View {
     var body: some View {
         List {
             Section("Apariencia") {
-                Picker("Tema", selection: $themeManager.selectedMode) {
-                    ForEach(AppThemeMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
+                Picker(
+                    "Tema",
+                    selection: Binding(
+                        get: { themeManager.selectedMode },
+                        set: { themeManager.selectedMode = $0 }
+                    )
+                ) {
+                    ForEach(
+                        AppThemeMode.allCases
+                    ) { mode in
+                        Text(
+                            mode.title
+                        )
+                        .tag(
+                            mode
+                        )
                     }
                 }
                 .pickerStyle(.segmented)
