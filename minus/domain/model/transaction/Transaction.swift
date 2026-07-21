@@ -19,6 +19,7 @@ struct Transaction: Identifiable {
     var recurrentEndDate: Date?
     var subscriptionDay: Int?
     let categoryId: UUID
+    let categoryName: String?
     var isCredit: Bool = false
 }
 

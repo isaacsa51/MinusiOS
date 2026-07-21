@@ -27,7 +27,8 @@ class TransactionRepositoryImpl: TransactionRepository {
             periodId: transaction.periodId,
             isDeleted: transaction.isDeleted,
             isCredit: transaction.isCredit,
-            categoryId: transaction.categoryId
+            categoryId: transaction.categoryId,
+            categoryName: transaction.categoryName
         )
         
         context.insert(entity)
@@ -123,7 +124,8 @@ class TransactionRepositoryImpl: TransactionRepository {
             createdAt: entity.createdAt,
             clientGeneratedId: entity.clientGeneratedId,
             periodId: entity.periodId,
-            categoryId: entity.categoryId
+            categoryId: entity.categoryId,
+            categoryName: entity.categoryName
         )
     }
 }

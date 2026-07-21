@@ -124,10 +124,12 @@ struct EditorView: View {
         .background(Color.minus.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task {
+            viewModel.configure(context: modelContext)
             if budgetVM == nil {
                 budgetVM = BudgetPeriodViewModel(context: modelContext)
             }
             await budgetVM?.checkActivePeriod()
+            await viewModel.loadTransactions()
         }
         .sheet(isPresented: $isShowingBudgetDetailsSheet) {
             if let vm = budgetVM {
@@ -143,7 +145,7 @@ struct EditorView: View {
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
-            HistoryView()
+            HistoryView(transactions: viewModel.transactions)
         }
     }
 

@@ -25,7 +25,8 @@ class EditTransactionUseCase {
             createdAt: existingTransaction.createdAt,
             clientGeneratedId: existingTransaction.clientGeneratedId,
             periodId: existingTransaction.periodId,
-            categoryId: existingTransaction.categoryId,
+            categoryId: newCategoryId ?? existingTransaction.categoryId,
+            categoryName: existingTransaction.categoryName,
         )
         
     

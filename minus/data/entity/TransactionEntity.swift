@@ -19,6 +19,7 @@ class TransactionEntity {
     var isDeleted: Bool
     var isCredit: Bool
     var categoryId: UUID
+    var categoryName: String?
     
     init(
         id: UUID,
@@ -28,7 +29,8 @@ class TransactionEntity {
         periodId: UUID,
         isDeleted: Bool,
         isCredit: Bool,
-        categoryId: UUID
+        categoryId: UUID,
+        categoryName: String? = nil
     ) {
         self.id = id
         self.amount = amount
@@ -38,5 +40,6 @@ class TransactionEntity {
         self.isDeleted = isDeleted
         self.isCredit = isCredit
         self.categoryId = categoryId
+        self.categoryName = categoryName
     }
 }

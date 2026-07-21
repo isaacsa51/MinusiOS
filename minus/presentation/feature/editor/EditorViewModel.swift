@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @Observable
 class EditorViewModel {
@@ -17,10 +18,23 @@ class EditorViewModel {
     
     /// Previously saved categories shown as badges
     private(set) var savedCategories: [Category] = []
+    
+    /// All saved transactions, sorted by date descending
+    private(set) var transactions: [Transaction] = []
 
     /// Formatted display string with grouping separators (e.g. "4,250.50")
     var amount: String {
         CurrencyInputFormatter.format(rawAmount)
+    }
+    
+    private var addExpenseUseCase: AddNewExpenseUseCase?
+    private var transactionRepository: TransactionRepository?
+    
+    func configure(context: ModelContext) {
+        let txRepo = TransactionRepositoryImpl(context: context)
+        let periodRepo = PeriodReportRepositoryImpl(context: context)
+        self.transactionRepository = txRepo
+        self.addExpenseUseCase = AddNewExpenseUseCase(repository: txRepo, periodRepo: periodRepo)
     }
     
     func processNumber(button: NumpadButtonArgs) {
@@ -56,24 +70,47 @@ class EditorViewModel {
         guard let amountValue = Double(rawAmount), amountValue > 0 else { return }
         
         let trimmed = categoryText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let category = Category(
-            id: UUID(),
-            name: trimmed.isEmpty ? nil : trimmed,
-            lastUsedAt: Date(),
-            createdAt: Date()
-        )
+        let categoryName = trimmed.isEmpty ? nil : trimmed
+        let categoryId = UUID()
         
         // Add to saved categories if it has a name and isn't already saved
-        if let name = category.name,
+        if let name = categoryName,
            !savedCategories.contains(where: { $0.name == name }) {
-            savedCategories.append(category)
+            savedCategories.append(Category(
+                id: categoryId,
+                name: name,
+                lastUsedAt: Date(),
+                createdAt: Date()
+            ))
         }
         
-        print("Transaction: \(rawAmount), category: \(category.name ?? "none"), categoryId: \(category.id)")
+        Task {
+            do {
+                try await addExpenseUseCase?.execute(
+                    amount: amountValue,
+                    categoryId: categoryId,
+                    categoryName: categoryName
+                )
+                await loadTransactions()
+            } catch {
+                print("Failed to save transaction: \(error)")
+            }
+        }
         
         // Reset inputs
         rawAmount = "0"
         categoryText = ""
+    }
+    
+    func loadTransactions() async {
+        do {
+            let fetched = try await transactionRepository?.getAllTransactions() ?? []
+            await MainActor.run {
+                self.transactions = fetched
+            }
+        } catch {
+            print("Failed to load transactions: \(error)")
+        }
     }
     
     func selectCategory(_ category: Category) {
