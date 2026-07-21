@@ -21,13 +21,30 @@ class EditorViewModel {
     var hasValue: Bool {
         rawAmount != "0"
     }
+    
+    /// Whether the expression contains any operator
+    var hasExpression: Bool {
+        rawAmount.contains(where: { Self.operatorSet.contains($0) })
+    }
 
+    /// Formatted display string — formats each number segment and joins with operator symbols
     var amount: String {
-        CurrencyInputFormatter.format(rawAmount)
+        formatExpression(rawAmount)
+    }
+    
+    /// Computed result of the expression, shown below the amount when there's an operator
+    var expressionResult: String? {
+        guard hasExpression else { return nil }
+        guard let last = rawAmount.last, !Self.operatorSet.contains(last), last != "." else { return nil }
+        guard let value = evaluate(rawAmount), value.isFinite else { return nil }
+        let raw = formatResult(value)
+        return "= \(CurrencyInputFormatter.formatWithSymbol(raw))"
     }
     
     private var addExpenseUseCase: AddNewExpenseUseCase?
     private var transactionRepository: TransactionRepository?
+    
+    private static let operatorSet: Set<Character> = ["+", "-", "*", "/"]
     
     func configure(context: ModelContext) {
         let txRepo = TransactionRepositoryImpl(context: context)
@@ -36,17 +53,28 @@ class EditorViewModel {
         self.addExpenseUseCase = AddNewExpenseUseCase(repository: txRepo, periodRepo: periodRepo)
     }
     
+    // MARK: - Input handling
+    
     func processNumber(button: NumpadButtonArgs) {
         if button.type == .number, let numberValue = button.label {
-            if let dotIndex = rawAmount.firstIndex(of: ".") {
-                let decimals = rawAmount[rawAmount.index(after: dotIndex)...]
+            let segment = currentNumberSegment()
+            // Limit decimal places to 2
+            if let dotIndex = segment.firstIndex(of: ".") {
+                let decimals = segment[segment.index(after: dotIndex)...]
                 if decimals.count >= 2 { return }
             }
             if rawAmount == "0" {
                 rawAmount = numberValue
+            } else if segment == "0" {
+                // Replace trailing "0" after an operator with the typed digit
+                rawAmount = String(rawAmount.dropLast()) + numberValue
             } else {
                 rawAmount += numberValue
             }
+        }
+        
+        if button.type == .op {
+            handleOperator(button)
         }
         
         if button.type == .action, button.icon == "delete.left" {
@@ -58,14 +86,153 @@ class EditorViewModel {
         }
                 
         if button.type == .action, button.label == "." {
-            if !rawAmount.contains(".") {
-                rawAmount += "."
+            let segment = currentNumberSegment()
+            if !segment.contains(".") {
+                if segment.isEmpty {
+                    rawAmount += "0."
+                } else {
+                    rawAmount += "."
+                }
             }
         }
     }
     
+    private func handleOperator(_ button: NumpadButtonArgs) {
+        // Equal button: collapse expression to its result
+        if button.icon == "equal" {
+            if hasExpression, let result = evaluate(rawAmount), result.isFinite, result >= 0 {
+                rawAmount = formatResult(result)
+            }
+            return
+        }
+        
+        guard rawAmount != "0" else { return }
+        guard let lastChar = rawAmount.last else { return }
+        
+        let op: String
+        switch button.icon {
+        case "plus": op = "+"
+        case "minus": op = "-"
+        case "multiply": op = "*"
+        case "divide": op = "/"
+        default: return
+        }
+        
+        if Self.operatorSet.contains(lastChar) {
+            // Replace last operator
+            rawAmount = String(rawAmount.dropLast()) + op
+        } else if lastChar == "." {
+            // Remove trailing dot before adding operator
+            rawAmount = String(rawAmount.dropLast()) + op
+        } else {
+            rawAmount += op
+        }
+    }
+    
+    /// Returns the number segment currently being typed (after the last operator)
+    private func currentNumberSegment() -> String {
+        if let lastOpIndex = rawAmount.lastIndex(where: { Self.operatorSet.contains($0) }) {
+            return String(rawAmount[rawAmount.index(after: lastOpIndex)...])
+        }
+        return rawAmount
+    }
+    
+    // MARK: - Expression evaluation
+    
+    private func evaluate(_ expr: String) -> Double? {
+        // Tokenize into numbers and operators
+        var numbers: [Double] = []
+        var ops: [Character] = []
+        var current = ""
+        
+        for char in expr {
+            if Self.operatorSet.contains(char) {
+                guard let num = Double(current) else { return nil }
+                numbers.append(num)
+                ops.append(char)
+                current = ""
+            } else {
+                current += String(char)
+            }
+        }
+        guard let lastNum = Double(current) else { return nil }
+        numbers.append(lastNum)
+        
+        // First pass: * and / (higher precedence)
+        var i = 0
+        while i < ops.count {
+            if ops[i] == "*" || ops[i] == "/" {
+                if ops[i] == "/" && numbers[i + 1] == 0 { return nil }
+                let result = ops[i] == "*" ? numbers[i] * numbers[i + 1] : numbers[i] / numbers[i + 1]
+                numbers[i] = result
+                numbers.remove(at: i + 1)
+                ops.remove(at: i)
+            } else {
+                i += 1
+            }
+        }
+        
+        // Second pass: + and -
+        var result = numbers[0]
+        for i in 0..<ops.count {
+            if ops[i] == "+" {
+                result += numbers[i + 1]
+            } else {
+                result -= numbers[i + 1]
+            }
+        }
+        
+        return result
+    }
+    
+    // MARK: - Formatting
+    
+    /// Formats the raw expression for display: each number gets grouping separators, operators become symbols
+    private func formatExpression(_ expr: String) -> String {
+        var result = ""
+        var currentNumber = ""
+        
+        for char in expr {
+            if Self.operatorSet.contains(char) {
+                result += CurrencyInputFormatter.format(currentNumber)
+                switch char {
+                case "+": result += "+"
+                case "-": result += "−"
+                case "*": result += "×"
+                case "/": result += "÷"
+                default: break
+                }
+                currentNumber = ""
+            } else {
+                currentNumber += String(char)
+            }
+        }
+        result += CurrencyInputFormatter.format(currentNumber)
+        return result
+    }
+    
+    /// Formats a computed result value, stripping unnecessary trailing zeros
+    private func formatResult(_ value: Double) -> String {
+        let raw = String(format: "%.2f", value)
+        var result = raw
+        if result.contains(".") {
+            while result.hasSuffix("0") { result.removeLast() }
+            if result.hasSuffix(".") { result.removeLast() }
+        }
+        return result
+    }
+    
+    // MARK: - Saving
+    
     func saveTransaction() {
-        guard let amountValue = Double(rawAmount), amountValue > 0 else { return }
+        let amountValue: Double
+        if hasExpression {
+            guard let result = evaluate(rawAmount), result.isFinite, result > 0 else { return }
+            amountValue = (result * 100).rounded() / 100
+        } else {
+            guard let value = Double(rawAmount), value > 0 else { return }
+            amountValue = value
+        }
         
         let trimmed = categoryText.trimmingCharacters(in: .whitespacesAndNewlines)
         let categoryName = trimmed.isEmpty ? nil : trimmed

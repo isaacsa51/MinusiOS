@@ -61,13 +61,7 @@ struct EditorView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
 
-                Text(viewModel.amount)
-                    .font(.system(size: 64, weight: .bold))
-                    .foregroundStyle(Color.minus.textPrimary)
-                    .padding(.trailing, 20)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                AmountDisplay(viewModel: viewModel)
                     .padding(.top, 16)
                     .offset(y: amountDragOffset)
                     .contentShape(Rectangle())
@@ -132,6 +126,33 @@ struct EditorView: View {
             amountDragOffset = 0
             isShowingHistorySheet = true
         }
+    }
+}
+
+/// Reads amount and expressionResult — isolated from numpad/category observations.
+private struct AmountDisplay: View {
+    let viewModel: EditorViewModel
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(viewModel.amount)
+                .font(.system(size: 64, weight: .bold))
+                .foregroundStyle(Color.minus.textPrimary)
+                .padding(.trailing, 20)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+
+            if let result = viewModel.expressionResult {
+                Text(result)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Color.minus.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, 20)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: viewModel.expressionResult != nil)
     }
 }
 
