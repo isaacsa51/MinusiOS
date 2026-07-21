@@ -74,6 +74,43 @@ struct EditorView: View {
 
             Spacer()
 
+            // Category input row
+            HStack(spacing: 8) {
+                if !viewModel.savedCategories.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(viewModel.savedCategories) { category in
+                                if let name = category.name {
+                                    CategoryBadgeView(
+                                        name: name,
+                                        isSelected: viewModel.categoryText == name,
+                                        onTap: { viewModel.selectCategory(category) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "tag")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.minus.textSecondary)
+                    TextField("Category", text: $viewModel.categoryText)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.minus.textPrimary)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.minus.surface)
+                .clipShape(Capsule())
+                .frame(maxWidth: viewModel.savedCategories.isEmpty ? .infinity : 160)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+
             NumpadView(onButtonTapped: { button in
                 if button.icon == "checkmark" {
                     viewModel.saveTransaction()

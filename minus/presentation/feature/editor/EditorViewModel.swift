@@ -11,6 +11,12 @@ import SwiftUI
 class EditorViewModel {
     /// Raw numeric string without formatting (e.g. "4250.50")
     private(set) var rawAmount: String = "0"
+    
+    /// Category text typed by the user
+    var categoryText: String = ""
+    
+    /// Previously saved categories shown as badges
+    private(set) var savedCategories: [Category] = []
 
     /// Formatted display string with grouping separators (e.g. "4,250.50")
     var amount: String {
@@ -47,6 +53,30 @@ class EditorViewModel {
     }
     
     func saveTransaction() {
-        print("TODO: implement current typed number as Transaction: \(rawAmount)")
+        guard let amountValue = Double(rawAmount), amountValue > 0 else { return }
+        
+        let trimmed = categoryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let category = Category(
+            id: UUID(),
+            name: trimmed.isEmpty ? nil : trimmed,
+            lastUsedAt: Date(),
+            createdAt: Date()
+        )
+        
+        // Add to saved categories if it has a name and isn't already saved
+        if let name = category.name,
+           !savedCategories.contains(where: { $0.name == name }) {
+            savedCategories.append(category)
+        }
+        
+        print("Transaction: \(rawAmount), category: \(category.name ?? "none"), categoryId: \(category.id)")
+        
+        // Reset inputs
+        rawAmount = "0"
+        categoryText = ""
+    }
+    
+    func selectCategory(_ category: Category) {
+        categoryText = category.name ?? ""
     }
 }
