@@ -22,105 +22,66 @@ struct EditorView: View {
     private let dragResistance: CGFloat = 0.4
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Button(action: {
-                    isShowingBudgetDetailsSheet = true
-                }) {
-                    BudgetPillView(
-                        title: budgetVM?.pillTitle ?? "Cargando...",
-                        amount: budgetVM?.pillAmount ?? "...",
-                        pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary
-                    )
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Button(action: {
+                        isShowingBudgetDetailsSheet = true
+                    }) {
+                        BudgetPillView(
+                            title: budgetVM?.pillTitle ?? "Cargando...",
+                            amount: budgetVM?.pillAmount ?? "...",
+                            pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Button(action: {
+                        router.navigate(to: .analytics)
+                    }) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Color.minus.textPrimary)
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Analytics")
+
+                    Button(action: {
+                        router.navigate(to: .settings)
+                    }) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Color.minus.textPrimary)
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Settings")
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
+                Text(viewModel.amount)
+                    .font(.system(size: 64, weight: .bold))
+                    .foregroundStyle(Color.minus.textPrimary)
+                    .padding(.trailing, 20)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 16)
+                    .offset(y: amountDragOffset)
+                    .contentShape(Rectangle())
+                    .gesture(amountDragGesture)
 
                 Spacer()
 
-                Button(action: {
-                    router.navigate(to: .analytics)
-                }) {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Color.minus.textPrimary)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Analytics")
+                CategoryInputRow(viewModel: viewModel)
 
-                Button(action: {
-                    router.navigate(to: .settings)
-                }) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Color.minus.textPrimary)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Settings")
+                EditorNumpad(viewModel: viewModel)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-
-            Text(viewModel.amount)
-                .font(.system(size: 64, weight: .bold))
-                .foregroundStyle(Color.minus.textPrimary)
-                .padding(.trailing, 20)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.top, 16)
-                .offset(y: amountDragOffset)
-                .contentShape(Rectangle())
-                .gesture(amountDragGesture)
-
-            Spacer()
-
-            // Category input row
-            HStack(spacing: 8) {
-                if !viewModel.savedCategories.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(viewModel.savedCategories) { category in
-                                if let name = category.name {
-                                    CategoryBadgeView(
-                                        name: name,
-                                        isSelected: viewModel.categoryText == name,
-                                        onTap: { viewModel.selectCategory(category) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                HStack(spacing: 6) {
-                    Image(systemName: "tag")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.minus.textSecondary)
-                    TextField("Category", text: $viewModel.categoryText)
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.minus.textPrimary)
-                        .textInputAutocapitalization(.words)
-                        .submitLabel(.done)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.minus.surface)
-                .clipShape(Capsule())
-                .frame(maxWidth: viewModel.savedCategories.isEmpty ? .infinity : 160)
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-
-            NumpadView(onButtonTapped: { button in
-                if button.icon == "checkmark" {
-                    viewModel.saveTransaction()
-                } else {
-                    viewModel.processNumber(button: button)
-                }
-            })
-            .padding(.bottom, 20)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
-        .frame(maxWidth: .infinity)
+        .ignoresSafeArea(.keyboard)
         .background(Color.minus.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task {
@@ -171,6 +132,28 @@ struct EditorView: View {
             amountDragOffset = 0
             isShowingHistorySheet = true
         }
+    }
+}
+
+private struct EditorNumpad: View {
+    let viewModel: EditorViewModel
+
+    var body: some View {
+        NumpadView(
+            onButtonTapped: { button in
+                if button.icon == "checkmark" {
+                    viewModel.saveTransaction()
+                } else {
+                    viewModel.processNumber(button: button)
+                }
+            },
+            onDeleteLongPressed: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.clearAll()
+                }
+            }
+        )
+        .padding(.bottom, 20)
     }
 }
 

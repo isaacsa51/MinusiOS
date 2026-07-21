@@ -27,6 +27,7 @@ struct NumpadButton: View {
     let type: NumpadButtonType
     var isTall: Bool = false
     let action: () -> Void
+    var onLongPress: (() -> Void)? = nil
 
     var body: some View {
         if isTall {
@@ -53,6 +54,10 @@ struct NumpadButton: View {
             .clipShape(Capsule())
         }
         .background(Color.minus.background)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in onLongPress?() }
+        )
     }
 
     private var buttonBackgroundColor: Color {

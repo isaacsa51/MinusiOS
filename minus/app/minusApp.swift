@@ -45,6 +45,7 @@ struct minusApp: App {
                     }
                     .environment(router)
             }
+            .ignoresSafeArea(.keyboard)
             .preferredColorScheme(themeManager.colorScheme)
             .tint(Color.minus.primaryAction)
             .environment(themeManager)

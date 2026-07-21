@@ -10,19 +10,18 @@ import SwiftData
 
 @Observable
 class EditorViewModel {
-    /// Raw numeric string without formatting (e.g. "4250.50")
     private(set) var rawAmount: String = "0"
     
-    /// Category text typed by the user
     var categoryText: String = ""
     
-    /// Previously saved categories shown as badges
     private(set) var savedCategories: [Category] = []
     
-    /// All saved transactions, sorted by date descending
     private(set) var transactions: [Transaction] = []
 
-    /// Formatted display string with grouping separators (e.g. "4,250.50")
+    var hasValue: Bool {
+        rawAmount != "0"
+    }
+
     var amount: String {
         CurrencyInputFormatter.format(rawAmount)
     }
@@ -39,7 +38,6 @@ class EditorViewModel {
     
     func processNumber(button: NumpadButtonArgs) {
         if button.type == .number, let numberValue = button.label {
-            // Limit decimal places to 2
             if let dotIndex = rawAmount.firstIndex(of: ".") {
                 let decimals = rawAmount[rawAmount.index(after: dotIndex)...]
                 if decimals.count >= 2 { return }
@@ -73,7 +71,6 @@ class EditorViewModel {
         let categoryName = trimmed.isEmpty ? nil : trimmed
         let categoryId = UUID()
         
-        // Add to saved categories if it has a name and isn't already saved
         if let name = categoryName,
            !savedCategories.contains(where: { $0.name == name }) {
             savedCategories.append(Category(
@@ -97,7 +94,6 @@ class EditorViewModel {
             }
         }
         
-        // Reset inputs
         rawAmount = "0"
         categoryText = ""
     }
@@ -107,10 +103,28 @@ class EditorViewModel {
             let fetched = try await transactionRepository?.getAllTransactions() ?? []
             await MainActor.run {
                 self.transactions = fetched
+                var seen = Set<String>()
+                for tx in fetched {
+                    if let name = tx.categoryName, !name.isEmpty, seen.insert(name).inserted {
+                        if !savedCategories.contains(where: { $0.name == name }) {
+                            savedCategories.append(Category(
+                                id: tx.categoryId,
+                                name: name,
+                                lastUsedAt: tx.createdAt,
+                                createdAt: tx.createdAt
+                            ))
+                        }
+                    }
+                }
             }
         } catch {
             print("Failed to load transactions: \(error)")
         }
+    }
+    
+    func clearAll() {
+        rawAmount = "0"
+        categoryText = ""
     }
     
     func selectCategory(_ category: Category) {

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct NumpadView: View {
     let onButtonTapped: (NumpadButtonArgs) -> Void
+    var onDeleteLongPressed: (() -> Void)? = nil
 
     let columnsMatrix: [[NumpadButtonArgs]] = [
         [
@@ -44,9 +45,14 @@ struct NumpadView: View {
             ForEach(columnsMatrix.indices, id: \.self) { colIndex in
                 VStack(spacing: 12) {
                     ForEach(columnsMatrix[colIndex]) { button in
-                        NumpadButton(label: button.label, icon: button.icon, type: button.type, isTall: button.isTall) {
-                            onButtonTapped(button)
-                        }
+                        NumpadButton(
+                            label: button.label,
+                            icon: button.icon,
+                            type: button.type,
+                            isTall: button.isTall,
+                            action: { onButtonTapped(button) },
+                            onLongPress: button.icon == "delete.left" ? onDeleteLongPressed : nil
+                        )
                     }
                 }
                 .frame(maxHeight: .infinity)
