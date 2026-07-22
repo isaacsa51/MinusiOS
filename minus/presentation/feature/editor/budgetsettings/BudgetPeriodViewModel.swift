@@ -4,34 +4,27 @@
 //
 
 import SwiftUI
-import SwiftData
 
+@MainActor
 @Observable
 class BudgetPeriodViewModel {
-    // Active period state
     var activePeriod: PeriodKey?
     var isLoading = true
     var showNewBudgetSheet = false
     var errorMessage: String?
-
-    // Creation form state
     var formBudgetAmount = ""
     var formStartDate = Date()
     var formEndDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
     var formCurrency: Currency = Currency.all.first { $0.code == "MXN" } ?? Currency.all[0]
     var formRemainingStrategy: RemainingBudgetStrategy = .SPLIT_EQUALLY
-
-    // Use cases
     private let getCurrentPeriodUseCase: GetCurrentPeriodIdIUseCase
     private let createBudgetPeriodUseCase: CreateBudgetPeriodUseCase
 
-    init(context: ModelContext) {
-        let repo = PeriodReportRepositoryImpl(context: context)
-        self.getCurrentPeriodUseCase = GetCurrentPeriodIdIUseCase(repository: repo)
-        self.createBudgetPeriodUseCase = CreateBudgetPeriodUseCase(repository: repo)
+    init(periodRepo: PeriodRepository) {
+        self.getCurrentPeriodUseCase = GetCurrentPeriodIdIUseCase(repository: periodRepo)
+        self.createBudgetPeriodUseCase = CreateBudgetPeriodUseCase(repository: periodRepo)
     }
 
-    // MARK: - Computed display properties
 
     var pillTitle: String {
         activePeriod != nil ? "Para hoy" : "Sin presupuesto"
@@ -61,8 +54,6 @@ class BudgetPeriodViewModel {
     var pillColor: Color {
         activePeriod != nil ? Color.minus.primaryAction : Color.minus.textSecondary
     }
-
-    // MARK: - Actions
 
     func checkActivePeriod() async {
         isLoading = true

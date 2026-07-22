@@ -15,6 +15,6 @@ class DeleteTransactionUseCase {
     }
     
     func execute(transactionId: UUID) async throws {
-        try await repository.getTransaction(id: transactionId)
+        try await repository.delete(transactionId: transactionId)
     }
 }

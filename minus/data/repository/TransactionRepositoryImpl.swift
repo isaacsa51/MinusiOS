@@ -21,7 +21,7 @@ class TransactionRepositoryImpl: TransactionRepository {
     ) async throws {
         let entity = TransactionEntity(
             id: transaction.id,
-            amount: transaction.amount,
+            amount: NSDecimalNumber(decimal: transaction.amount).doubleValue,
             createdAt: transaction.createdAt,
             clientGeneratedId: transaction.clientGeneratedId,
             periodId: transaction.periodId,
@@ -120,7 +120,7 @@ class TransactionRepositoryImpl: TransactionRepository {
     private func mapToDomain(_ entity: TransactionEntity) -> Transaction {
         return Transaction(
             id: entity.id,
-            amount: entity.amount,
+            amount: Decimal(entity.amount),
             createdAt: entity.createdAt,
             clientGeneratedId: entity.clientGeneratedId,
             periodId: entity.periodId,

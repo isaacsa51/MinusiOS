@@ -6,16 +6,19 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct HistoryView: View {
-    let transactions: [Transaction]
+    @Query(filter: #Predicate<TransactionEntity> { !$0.isDeleted },
+           sort: \TransactionEntity.createdAt, order: .reverse)
+    private var entities: [TransactionEntity]
     
-    private var groupedTransactions: [(date: String, transactions: [Transaction], total: Double)] {
+    private var groupedTransactions: [(date: String, transactions: [TransactionEntity], total: Decimal)] {
         let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.dateFormat = "dd MMMM"
         
-        let grouped = Dictionary(grouping: transactions) { tx in
+        let grouped = Dictionary(grouping: entities) { tx in
             calendar.startOfDay(for: tx.createdAt)
         }
         
@@ -23,7 +26,7 @@ struct HistoryView: View {
             .sorted { $0.key > $1.key }
             .map { (date, txs) in
                 let sorted = txs.sorted { $0.createdAt > $1.createdAt }
-                let total = sorted.reduce(0) { $0 + $1.amount }
+                let total = sorted.reduce(Decimal.zero) { $0 + Decimal($1.amount) }
                 return (date: formatter.string(from: date), transactions: sorted, total: total)
             }
     }
@@ -36,7 +39,7 @@ struct HistoryView: View {
     
     var body: some View {
         ScrollView {
-            if transactions.isEmpty {
+            if entities.isEmpty {
                 Text("No transactions yet")
                     .font(.system(size: 15))
                     .foregroundStyle(Color.minus.textSecondary)
@@ -50,7 +53,7 @@ struct HistoryView: View {
                                     TransactionRow(
                                         categoryName: tx.categoryName ?? "Expense",
                                         time: Self.timeFormatter.string(from: tx.createdAt),
-                                        amount: formatAmount(tx.amount)
+                                        amount: formatAmount(Decimal(tx.amount))
                                     )
                                     
                                     if tx.id != group.transactions.last?.id {
@@ -63,7 +66,6 @@ struct HistoryView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             .padding(.horizontal, 16)
                             
-                            // Daily total
                             HStack {
                                 Spacer()
                                 Text("Total: \(formatAmount(group.total))")
@@ -94,16 +96,13 @@ struct HistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    private func formatAmount(_ value: Double) -> String {
-        let raw = String(format: "%.2f", value)
-        // Strip trailing zeros after decimal
-        if raw.contains(".") {
-            var result = raw
-            while result.hasSuffix("0") { result.removeLast() }
-            if result.hasSuffix(".") { result.removeLast() }
-            return "$\(result)"
-        }
-        return "$\(raw)"
+    private func formatAmount(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        let formatted = formatter.string(from: value as NSDecimalNumber) ?? "0"
+        return "$\(formatted)"
     }
 }
 
@@ -133,13 +132,8 @@ private struct TransactionRow: View {
 }
 
 #Preview {
-    let sampleTransactions = [
-        Transaction(id: UUID(), amount: 49.99, createdAt: Date(), clientGeneratedId: UUID().uuidString, periodId: UUID(), categoryId: UUID(), categoryName: "Online course"),
-        Transaction(id: UUID(), amount: 25.0, createdAt: Date().addingTimeInterval(-3600), clientGeneratedId: UUID().uuidString, periodId: UUID(), categoryId: UUID(), categoryName: "Gym membership"),
-        Transaction(id: UUID(), amount: 55.0, createdAt: Date().addingTimeInterval(-86400), clientGeneratedId: UUID().uuidString, periodId: UUID(), categoryId: UUID(), categoryName: "New shirt"),
-    ]
-    
     TopSheetContainer(isPresented: .constant(true)) {
-        HistoryView(transactions: sampleTransactions)
+        HistoryView()
     }
+    .modelContainer(for: TransactionEntity.self, inMemory: true)
 }

@@ -6,8 +6,8 @@
 //
 
 import SwiftUI
-import SwiftData
 
+@MainActor
 @Observable
 class EditorViewModel {
     private(set) var rawAmount: String = "0"
@@ -16,23 +16,22 @@ class EditorViewModel {
     
     private(set) var savedCategories: [Category] = []
     
-    private(set) var transactions: [Transaction] = []
+    var errorMessage: String?
+    
+
 
     var hasValue: Bool {
         rawAmount != "0"
     }
     
-    /// Whether the expression contains any operator
     var hasExpression: Bool {
         rawAmount.contains(where: { Self.operatorSet.contains($0) })
     }
 
-    /// Formatted display string — formats each number segment and joins with operator symbols
     var amount: String {
         formatExpression(rawAmount)
     }
     
-    /// Computed result of the expression, shown below the amount when there's an operator
     var expressionResult: String? {
         guard hasExpression else { return nil }
         guard let last = rawAmount.last, !Self.operatorSet.contains(last), last != "." else { return nil }
@@ -41,24 +40,19 @@ class EditorViewModel {
         return "= \(CurrencyInputFormatter.formatWithSymbol(raw))"
     }
     
-    private var addExpenseUseCase: AddNewExpenseUseCase?
-    private var transactionRepository: TransactionRepository?
+    private let addExpenseUseCase: AddNewExpenseUseCase
+    private let transactionRepository: TransactionRepository
     
     private static let operatorSet: Set<Character> = ["+", "-", "*", "/"]
     
-    func configure(context: ModelContext) {
-        let txRepo = TransactionRepositoryImpl(context: context)
-        let periodRepo = PeriodReportRepositoryImpl(context: context)
-        self.transactionRepository = txRepo
-        self.addExpenseUseCase = AddNewExpenseUseCase(repository: txRepo, periodRepo: periodRepo)
+    init(transactionRepo: TransactionRepository, periodRepo: PeriodRepository) {
+        self.transactionRepository = transactionRepo
+        self.addExpenseUseCase = AddNewExpenseUseCase(repository: transactionRepo, periodRepo: periodRepo)
     }
-    
-    // MARK: - Input handling
     
     func processNumber(button: NumpadButtonArgs) {
         if button.type == .number, let numberValue = button.label {
             let segment = currentNumberSegment()
-            // Limit decimal places to 2
             if let dotIndex = segment.firstIndex(of: ".") {
                 let decimals = segment[segment.index(after: dotIndex)...]
                 if decimals.count >= 2 { return }
@@ -66,7 +60,6 @@ class EditorViewModel {
             if rawAmount == "0" {
                 rawAmount = numberValue
             } else if segment == "0" {
-                // Replace trailing "0" after an operator with the typed digit
                 rawAmount = String(rawAmount.dropLast()) + numberValue
             } else {
                 rawAmount += numberValue
@@ -98,7 +91,6 @@ class EditorViewModel {
     }
     
     private func handleOperator(_ button: NumpadButtonArgs) {
-        // Equal button: collapse expression to its result
         if button.icon == "equal" {
             if hasExpression, let result = evaluate(rawAmount), result.isFinite, result >= 0 {
                 rawAmount = formatResult(result)
@@ -119,17 +111,14 @@ class EditorViewModel {
         }
         
         if Self.operatorSet.contains(lastChar) {
-            // Replace last operator
             rawAmount = String(rawAmount.dropLast()) + op
         } else if lastChar == "." {
-            // Remove trailing dot before adding operator
             rawAmount = String(rawAmount.dropLast()) + op
         } else {
             rawAmount += op
         }
     }
     
-    /// Returns the number segment currently being typed (after the last operator)
     private func currentNumberSegment() -> String {
         if let lastOpIndex = rawAmount.lastIndex(where: { Self.operatorSet.contains($0) }) {
             return String(rawAmount[rawAmount.index(after: lastOpIndex)...])
@@ -137,10 +126,7 @@ class EditorViewModel {
         return rawAmount
     }
     
-    // MARK: - Expression evaluation
-    
     private func evaluate(_ expr: String) -> Double? {
-        // Tokenize into numbers and operators
         var numbers: [Double] = []
         var ops: [Character] = []
         var current = ""
@@ -158,7 +144,6 @@ class EditorViewModel {
         guard let lastNum = Double(current) else { return nil }
         numbers.append(lastNum)
         
-        // First pass: * and / (higher precedence)
         var i = 0
         while i < ops.count {
             if ops[i] == "*" || ops[i] == "/" {
@@ -172,7 +157,6 @@ class EditorViewModel {
             }
         }
         
-        // Second pass: + and -
         var result = numbers[0]
         for i in 0..<ops.count {
             if ops[i] == "+" {
@@ -185,9 +169,6 @@ class EditorViewModel {
         return result
     }
     
-    // MARK: - Formatting
-    
-    /// Formats the raw expression for display: each number gets grouping separators, operators become symbols
     private func formatExpression(_ expr: String) -> String {
         var result = ""
         var currentNumber = ""
@@ -211,7 +192,6 @@ class EditorViewModel {
         return result
     }
     
-    /// Formats a computed result value, stripping unnecessary trailing zeros
     private func formatResult(_ value: Double) -> String {
         let raw = String(format: "%.2f", value)
         var result = raw
@@ -222,15 +202,13 @@ class EditorViewModel {
         return result
     }
     
-    // MARK: - Saving
-    
     func saveTransaction() {
-        let amountValue: Double
+        let amountValue: Decimal
         if hasExpression {
             guard let result = evaluate(rawAmount), result.isFinite, result > 0 else { return }
-            amountValue = (result * 100).rounded() / 100
+            amountValue = Decimal(string: formatResult(result)) ?? Decimal(result)
         } else {
-            guard let value = Double(rawAmount), value > 0 else { return }
+            guard let value = Decimal(string: rawAmount), value > 0 else { return }
             amountValue = value
         }
         
@@ -250,14 +228,14 @@ class EditorViewModel {
         
         Task {
             do {
-                try await addExpenseUseCase?.execute(
+                try await addExpenseUseCase.execute(
                     amount: amountValue,
                     categoryId: categoryId,
                     categoryName: categoryName
                 )
-                await loadTransactions()
+                await loadSavedCategories()
             } catch {
-                print("Failed to save transaction: \(error)")
+                errorMessage = error.localizedDescription
             }
         }
         
@@ -265,27 +243,24 @@ class EditorViewModel {
         categoryText = ""
     }
     
-    func loadTransactions() async {
+    func loadSavedCategories() async {
         do {
-            let fetched = try await transactionRepository?.getAllTransactions() ?? []
-            await MainActor.run {
-                self.transactions = fetched
-                var seen = Set<String>()
-                for tx in fetched {
-                    if let name = tx.categoryName, !name.isEmpty, seen.insert(name).inserted {
-                        if !savedCategories.contains(where: { $0.name == name }) {
-                            savedCategories.append(Category(
-                                id: tx.categoryId,
-                                name: name,
-                                lastUsedAt: tx.createdAt,
-                                createdAt: tx.createdAt
-                            ))
-                        }
+            let fetched = try await transactionRepository.getAllTransactions()
+            var seen = Set<String>()
+            for tx in fetched {
+                if let name = tx.categoryName, !name.isEmpty, seen.insert(name).inserted {
+                    if !savedCategories.contains(where: { $0.name == name }) {
+                        savedCategories.append(Category(
+                            id: tx.categoryId,
+                            name: name,
+                            lastUsedAt: tx.createdAt,
+                            createdAt: tx.createdAt
+                        ))
                     }
                 }
             }
         } catch {
-            print("Failed to load transactions: \(error)")
+            errorMessage = error.localizedDescription
         }
     }
     

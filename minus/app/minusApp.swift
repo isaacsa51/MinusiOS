@@ -16,13 +16,18 @@ struct minusApp: App {
     @State private var themeManager = ThemeManager()
 
     let container: ModelContainer
+    private let txRepo: TransactionRepositoryImpl
+    private let periodRepo: PeriodReportRepositoryImpl
 
     init() {
         do {
-            container = try ModelContainer(for: TransactionEntity.self, PeriodEntity.self)
+            let schema = Schema(versionedSchema: SchemaV1.self)
+            container = try ModelContainer(for: schema, migrationPlan: MinusMigrationPlan.self)
         } catch {
             fatalError("Error trying to init database: \(error.localizedDescription)")
         }
+        txRepo = TransactionRepositoryImpl(context: container.mainContext)
+        periodRepo = PeriodReportRepositoryImpl(context: container.mainContext)
     }
 
     var body: some Scene {
@@ -49,6 +54,8 @@ struct minusApp: App {
             .preferredColorScheme(themeManager.colorScheme)
             .tint(Color.minus.primaryAction)
             .environment(themeManager)
+            .environment(\.transactionRepository, txRepo)
+            .environment(\.periodRepository, periodRepo)
             .modelContainer(container)
         }
     }

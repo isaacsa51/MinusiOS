@@ -66,6 +66,14 @@ struct BudgetDetailsSheet: View {
                     }
                 }
             }
+            .alert("Error", isPresented: Binding(
+                get: { viewModel.errorMessage != nil },
+                set: { if !$0 { viewModel.errorMessage = nil } }
+            )) {
+                Button("OK") { viewModel.errorMessage = nil }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
             // generate "alert dialog" for ending early the period
             .confirmationDialog("Terminar periodo actual?", isPresented: $showEndPeriodAlert, titleVisibility: .visible) {
                 Button("Finalizar y crear uno nuevo", role: .destructive) {

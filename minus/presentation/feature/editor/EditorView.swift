@@ -7,12 +7,12 @@
 
 import Foundation
 import SwiftUI
-import SwiftData
 
 struct EditorView: View {
     @Environment(NavigationRouter.self) var router
-    @Environment(\.modelContext) private var modelContext
-    @State private var viewModel = EditorViewModel()
+    @Environment(\EnvironmentValues.transactionRepository) private var txRepo
+    @Environment(\EnvironmentValues.periodRepository) private var periodRepo
+    @State private var viewModel: EditorViewModel?
     @State private var budgetVM: BudgetPeriodViewModel?
     @State private var isShowingBudgetDetailsSheet = false
     @State private var isShowingHistorySheet = false
@@ -23,68 +23,72 @@ struct EditorView: View {
 
     var body: some View {
         GeometryReader { geo in
-            VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    Button(action: {
-                        isShowingBudgetDetailsSheet = true
-                    }) {
-                        BudgetPillView(
-                            title: budgetVM?.pillTitle ?? "Cargando...",
-                            amount: budgetVM?.pillAmount ?? "...",
-                            pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary
-                        )
+            if let viewModel {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            isShowingBudgetDetailsSheet = true
+                        }) {
+                            BudgetPillView(
+                                title: budgetVM?.pillTitle ?? "Cargando...",
+                                amount: budgetVM?.pillAmount ?? "...",
+                                pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        Button(action: {
+                            router.navigate(to: .analytics)
+                        }) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(Color.minus.textPrimary)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Analytics")
+
+                        Button(action: {
+                            router.navigate(to: .settings)
+                        }) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(Color.minus.textPrimary)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Settings")
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                    AmountDisplay(viewModel: viewModel)
+                        .padding(.top, 16)
+                        .offset(y: amountDragOffset)
+                        .contentShape(Rectangle())
+                        .gesture(amountDragGesture)
 
                     Spacer()
 
-                    Button(action: {
-                        router.navigate(to: .analytics)
-                    }) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.minus.textPrimary)
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("Analytics")
+                    CategoryInputRow(viewModel: viewModel)
 
-                    Button(action: {
-                        router.navigate(to: .settings)
-                    }) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.minus.textPrimary)
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("Settings")
+                    EditorNumpad(viewModel: viewModel)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-
-                AmountDisplay(viewModel: viewModel)
-                    .padding(.top, 16)
-                    .offset(y: amountDragOffset)
-                    .contentShape(Rectangle())
-                    .gesture(amountDragGesture)
-
-                Spacer()
-
-                CategoryInputRow(viewModel: viewModel)
-
-                EditorNumpad(viewModel: viewModel)
+                .frame(width: geo.size.width, height: geo.size.height)
             }
-            .frame(width: geo.size.width, height: geo.size.height)
         }
         .ignoresSafeArea(.keyboard)
         .background(Color.minus.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            viewModel.configure(context: modelContext)
-            if budgetVM == nil {
-                budgetVM = BudgetPeriodViewModel(context: modelContext)
+            if viewModel == nil, let txRepo, let periodRepo {
+                viewModel = EditorViewModel(transactionRepo: txRepo, periodRepo: periodRepo)
+            }
+            if budgetVM == nil, let periodRepo {
+                budgetVM = BudgetPeriodViewModel(periodRepo: periodRepo)
             }
             await budgetVM?.checkActivePeriod()
-            await viewModel.loadTransactions()
+            await viewModel?.loadSavedCategories()
         }
         .sheet(isPresented: $isShowingBudgetDetailsSheet) {
             if let vm = budgetVM {
@@ -100,7 +104,15 @@ struct EditorView: View {
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
-            HistoryView(transactions: viewModel.transactions)
+            HistoryView()
+        }
+        .alert("Error", isPresented: Binding(
+            get: { viewModel?.errorMessage != nil },
+            set: { if !$0 { viewModel?.errorMessage = nil } }
+        )) {
+            Button("OK") { viewModel?.errorMessage = nil }
+        } message: {
+            Text(viewModel?.errorMessage ?? "")
         }
     }
 
@@ -129,7 +141,6 @@ struct EditorView: View {
     }
 }
 
-/// Reads amount and expressionResult — isolated from numpad/category observations.
 private struct AmountDisplay: View {
     let viewModel: EditorViewModel
 

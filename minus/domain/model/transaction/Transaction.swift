@@ -9,7 +9,7 @@ import Foundation
 
 struct Transaction: Identifiable {
     let id: UUID
-    let amount: Double
+    let amount: Decimal
     let createdAt: Date
     let clientGeneratedId: String
     let periodId: UUID

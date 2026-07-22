@@ -17,7 +17,7 @@ class AddNewExpenseUseCase {
         self.periodRepository = periodRepo
     }
     
-    func execute(amount: Double, categoryId: UUID, categoryName: String?) async throws {
+    func execute(amount: Decimal, categoryId: UUID, categoryName: String?) async throws {
         
         // first we check if the users isn't saving an empty transactions
         // then we guard that the user has a current active budget period

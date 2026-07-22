@@ -1,8 +1,3 @@
-//
-//  NewBudgetPeriodSheet.swift
-//  minus
-//
-
 import SwiftUI
 
 struct NewBudgetPeriodSheet: View {
@@ -11,7 +6,6 @@ struct NewBudgetPeriodSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Drag indicator
             RoundedRectangle(cornerRadius: 2.5)
                 .fill(Color.minus.textSecondary.opacity(0.4))
                 .frame(width: 36, height: 5)
@@ -19,13 +13,11 @@ struct NewBudgetPeriodSheet: View {
 
             ScrollView {
                 VStack(spacing: 28) {
-                    // Title
                     Text("New Budget Period")
                         .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(Color.minus.textPrimary)
                         .padding(.top, 16)
 
-                    // Large amount input
                     TextField("0.00", text: $viewModel.formBudgetAmount)
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .keyboardType(.decimalPad)
@@ -40,25 +32,21 @@ struct NewBudgetPeriodSheet: View {
                         }
 
                     VStack(spacing: 0) {
-                        // Date range row
                         dateRangeRow
 
                         Divider()
                             .padding(.leading, 52)
 
-                        // Remaining strategy row
                         strategyRow
 
                         Divider()
                             .padding(.leading, 52)
 
-                        // Currency row
                         currencyRow
                     }
                     .background(Color.minus.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                    // Apply button
                     Button {
                         Task { await viewModel.applyNewBudget() }
                     } label: {
@@ -76,9 +64,15 @@ struct NewBudgetPeriodSheet: View {
         }
         .background(Color.minus.background.ignoresSafeArea())
         .interactiveDismissDisabled(viewModel.activePeriod == nil)
+        .alert("Error", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK") { viewModel.errorMessage = nil }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
     }
-
-    // MARK: - Row views
 
     private var dateRangeRow: some View {
         HStack(spacing: 14) {
@@ -159,8 +153,6 @@ struct NewBudgetPeriodSheet: View {
         .padding(.vertical, 14)
     }
 }
-
-// MARK: - Display names for strategy
 
 extension RemainingBudgetStrategy {
     var displayName: String {
