@@ -32,7 +32,9 @@ struct EditorView: View {
                             BudgetPillView(
                                 title: budgetVM?.pillTitle ?? "Cargando...",
                                 amount: budgetVM?.pillAmount ?? "...",
-                                pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary
+                                pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary,
+                                progress: budgetVM?.spendingProgress ?? 0,
+                                isExceeded: budgetVM?.isExceeded ?? false
                             )
                         }
                         .buttonStyle(.plain)
@@ -84,8 +86,12 @@ struct EditorView: View {
             if viewModel == nil, let txRepo, let periodRepo {
                 viewModel = EditorViewModel(transactionRepo: txRepo, periodRepo: periodRepo)
             }
-            if budgetVM == nil, let periodRepo {
-                budgetVM = BudgetPeriodViewModel(periodRepo: periodRepo)
+            if budgetVM == nil, let periodRepo, let txRepo {
+                budgetVM = BudgetPeriodViewModel(periodRepo: periodRepo, transactionRepo: txRepo)
+            }
+            let localBudgetVM = budgetVM
+            viewModel?.onTransactionSaved = {
+                await localBudgetVM?.loadSpending()
             }
             await budgetVM?.checkActivePeriod()
             await viewModel?.loadSavedCategories()

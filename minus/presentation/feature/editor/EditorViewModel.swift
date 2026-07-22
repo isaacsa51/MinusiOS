@@ -18,6 +18,8 @@ class EditorViewModel {
     
     var errorMessage: String?
     
+    var onTransactionSaved: (() async -> Void)?
+    
 
 
     var hasValue: Bool {
@@ -234,6 +236,7 @@ class EditorViewModel {
                     categoryName: categoryName
                 )
                 await loadSavedCategories()
+                await onTransactionSaved?()
             } catch {
                 errorMessage = error.localizedDescription
             }

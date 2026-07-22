@@ -9,9 +9,13 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    @Environment(\.transactionRepository) private var transactionRepository
+    
     @Query(filter: #Predicate<TransactionEntity> { !$0.isDeleted },
            sort: \TransactionEntity.createdAt, order: .reverse)
     private var entities: [TransactionEntity]
+    
+    @State private var expandedTransactionId: UUID?
     
     private var groupedTransactions: [(date: String, transactions: [TransactionEntity], total: Decimal)] {
         let calendar = Calendar.current
@@ -37,6 +41,13 @@ struct HistoryView: View {
         return f
     }()
     
+    private static let fullDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .full
+        f.timeStyle = .short
+        return f
+    }()
+    
     var body: some View {
         ScrollView {
             if entities.isEmpty {
@@ -53,7 +64,24 @@ struct HistoryView: View {
                                     TransactionRow(
                                         categoryName: tx.categoryName ?? "Expense",
                                         time: Self.timeFormatter.string(from: tx.createdAt),
-                                        amount: formatAmount(Decimal(tx.amount))
+                                        amount: formatAmount(Decimal(tx.amount)),
+                                        isExpanded: expandedTransactionId == tx.id,
+                                        fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
+                                        onTap: {
+                                            withAnimation(.easeInOut(duration: 0.25)) {
+                                                if expandedTransactionId == tx.id {
+                                                    expandedTransactionId = nil
+                                                } else {
+                                                    expandedTransactionId = tx.id
+                                                }
+                                            }
+                                        },
+                                        onEdit: {
+                                            // TODO: wire up edit flow
+                                        },
+                                        onDelete: {
+                                            deleteTransaction(id: tx.id)
+                                        }
                                     )
                                     
                                     if tx.id != group.transactions.last?.id {
@@ -104,30 +132,115 @@ struct HistoryView: View {
         let formatted = formatter.string(from: value as NSDecimalNumber) ?? "0"
         return "$\(formatted)"
     }
+    
+    private func deleteTransaction(id: UUID) {
+        guard let repo = transactionRepository else { return }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            expandedTransactionId = nil
+        }
+        Task {
+            try? await repo.delete(transactionId: id)
+        }
+    }
 }
 
 private struct TransactionRow: View {
     let categoryName: String
     let time: String
     let amount: String
+    let isExpanded: Bool
+    let fullDate: String
+    let onTap: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: onTap) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(categoryName)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Color.minus.textPrimary)
+                        Text(time)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.minus.textSecondary)
+                    }
+                    Spacer()
+                    Text(amount)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.minus.textPrimary)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.minus.textSecondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            
+            if isExpanded {
+                VStack(spacing: 0) {
+                    Divider()
+                        .padding(.leading, 16)
+                    
+                    VStack(spacing: 8) {
+                        DetailInfoRow(label: "Date", value: fullDate)
+                        DetailInfoRow(label: "Category", value: categoryName)
+                        DetailInfoRow(label: "Amount", value: amount)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    
+                    HStack(spacing: 12) {
+                        Button(action: onEdit) {
+                            Label("Edit", systemImage: "pencil")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color.minus.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Color.minus.surfaceSecondary)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Button(action: onDelete) {
+                            Label("Delete", systemImage: "trash")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color.minus.destructive)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(Color.minus.destructive.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 10)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
+private struct DetailInfoRow: View {
+    let label: String
+    let value: String
     
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(categoryName)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(Color.minus.textPrimary)
-                Text(time)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.minus.textSecondary)
-            }
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundStyle(Color.minus.textSecondary)
             Spacer()
-            Text(amount)
-                .font(.system(size: 18, weight: .semibold))
+            Text(value)
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.minus.textPrimary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
     }
 }
 
