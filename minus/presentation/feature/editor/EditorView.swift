@@ -110,7 +110,7 @@ struct EditorView: View {
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
-            HistoryView()
+            HistoryView(activePeriodId: budgetVM?.activePeriod?.id)
         }
         .onChange(of: isShowingHistorySheet) { _, isShowing in
             if !isShowing {

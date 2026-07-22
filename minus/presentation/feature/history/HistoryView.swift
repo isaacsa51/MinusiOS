@@ -9,20 +9,34 @@ import SwiftUI
 import SwiftData
 
 struct HistoryView: View {
+    var activePeriodId: UUID?
+    
     @Environment(\.transactionRepository) private var transactionRepository
     
     @Query(filter: #Predicate<TransactionEntity> { !$0.isDeleted },
            sort: \TransactionEntity.createdAt, order: .reverse)
     private var entities: [TransactionEntity]
     
+    @AppStorage("showPastPeriodExpenses") private var showPastPeriodExpensesEnabled = true
     @State private var expandedTransactionId: UUID?
+    @State private var showPastPeriods = false
     
-    private var groupedTransactions: [(date: String, transactions: [TransactionEntity], total: Decimal)] {
+    private var currentPeriodEntities: [TransactionEntity] {
+        guard let periodId = activePeriodId else { return entities }
+        return entities.filter { $0.periodId == periodId }
+    }
+    
+    private var pastPeriodEntities: [TransactionEntity] {
+        guard let periodId = activePeriodId else { return [] }
+        return entities.filter { $0.periodId != periodId }
+    }
+    
+    private func groupTransactions(_ source: [TransactionEntity]) -> [(date: String, transactions: [TransactionEntity], total: Decimal)] {
         let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.dateFormat = "dd MMMM"
         
-        let grouped = Dictionary(grouping: entities) { tx in
+        let grouped = Dictionary(grouping: source) { tx in
             calendar.startOfDay(for: tx.createdAt)
         }
         
@@ -57,71 +71,88 @@ struct HistoryView: View {
                     .padding(.top, 40)
             } else {
                 LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                    ForEach(groupedTransactions, id: \.date) { group in
-                        Section {
-                            VStack(spacing: 0) {
-                                ForEach(group.transactions) { tx in
-                                    TransactionRow(
-                                        categoryName: tx.categoryName ?? "Expense",
-                                        time: Self.timeFormatter.string(from: tx.createdAt),
-                                        amount: formatAmount(Decimal(tx.amount)),
-                                        isExpanded: expandedTransactionId == tx.id,
-                                        fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
-                                        onTap: {
-                                            withAnimation(.easeInOut(duration: 0.25)) {
-                                                if expandedTransactionId == tx.id {
-                                                    expandedTransactionId = nil
-                                                } else {
-                                                    expandedTransactionId = tx.id
-                                                }
-                                            }
-                                        },
-                                        onEdit: {
-                                            // TODO: wire up edit flow
-                                        },
-                                        onDelete: {
-                                            deleteTransaction(id: tx.id)
-                                        }
-                                    )
-                                    
-                                    if tx.id != group.transactions.last?.id {
-                                        Divider()
-                                            .padding(.leading, 16)
-                                    }
-                                }
+                    transactionSections(for: groupTransactions(currentPeriodEntities))
+                    
+                    if showPastPeriodExpensesEnabled && !pastPeriodEntities.isEmpty {
+                        PastPeriodDivider(isExpanded: showPastPeriods) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showPastPeriods.toggle()
                             }
-                            .background(Color.minus.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .padding(.horizontal, 16)
-                            
-                            HStack {
-                                Spacer()
-                                Text("Total: \(formatAmount(group.total))")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(Color.minus.textSecondary)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 4)
-                            .padding(.bottom, 12)
-                        } header: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(Color.minus.textSecondary)
-                                Text(group.date)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(Color.minus.textSecondary)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.minus.background)
+                        }
+                        
+                        if showPastPeriods {
+                            transactionSections(for: groupTransactions(pastPeriodEntities))
                         }
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    @ViewBuilder
+    private func transactionSections(for groups: [(date: String, transactions: [TransactionEntity], total: Decimal)]) -> some View {
+        ForEach(groups, id: \.date) { group in
+            Section {
+                VStack(spacing: 0) {
+                    ForEach(group.transactions) { tx in
+                        TransactionRow(
+                            categoryName: tx.categoryName ?? "Expense",
+                            time: Self.timeFormatter.string(from: tx.createdAt),
+                            amount: formatAmount(Decimal(tx.amount)),
+                            isExpanded: expandedTransactionId == tx.id,
+                            fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
+                            onTap: {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    if expandedTransactionId == tx.id {
+                                        expandedTransactionId = nil
+                                    } else {
+                                        expandedTransactionId = tx.id
+                                    }
+                                }
+                            },
+                            onEdit: {
+                                // TODO: wire up edit flow
+                            },
+                            onDelete: {
+                                deleteTransaction(id: tx.id)
+                            }
+                        )
+                        
+                        if tx.id != group.transactions.last?.id {
+                            Divider()
+                                .padding(.leading, 16)
+                        }
+                    }
+                }
+                .background(Color.minus.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, 16)
+                
+                HStack {
+                    Spacer()
+                    Text("Total: \(formatAmount(group.total))")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.minus.textSecondary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 12)
+            } header: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.minus.textSecondary)
+                    Text(group.date)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.minus.textSecondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.minus.background)
+            }
+        }
     }
     
     private func formatAmount(_ value: Decimal) -> String {
@@ -244,9 +275,87 @@ private struct DetailInfoRow: View {
     }
 }
 
-#Preview {
-    TopSheetContainer(isPresented: .constant(true)) {
-        HistoryView()
+private struct PastPeriodDivider: View {
+    let isExpanded: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                line
+                HStack(spacing: 6) {
+                    Text(isExpanded ? "Ocultar periodos anteriores" : "Ver periodos anteriores")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Color.minus.textSecondary)
+                }
+                .layoutPriority(1)
+                line
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+        }
+        .buttonStyle(.plain)
     }
-    .modelContainer(for: TransactionEntity.self, inMemory: true)
+    
+    private var line: some View {
+        Rectangle()
+            .fill(Color.minus.divider)
+            .frame(height: 1)
+    }
+}
+
+private struct HistoryPreview: View {
+    @Environment(\.modelContext) private var context
+    
+    private let currentPeriodId = UUID()
+    private let pastPeriodId = UUID()
+    
+    var body: some View {
+        TopSheetContainer(isPresented: .constant(true)) {
+            HistoryView(activePeriodId: currentPeriodId)
+        }
+        .onAppear { seedData() }
+    }
+    
+    private func seedData() {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        let currentTransactions: [(Double, String, Date)] = [
+            (45.50, "Lunch", now),
+            (12.00, "Coffee", now),
+            (230.00, "Groceries", calendar.date(byAdding: .day, value: -1, to: now)!),
+            (89.99, "Gas", calendar.date(byAdding: .day, value: -1, to: now)!),
+            (15.00, "Snacks", calendar.date(byAdding: .day, value: -2, to: now)!),
+        ]
+        
+        let pastTransactions: [(Double, String, Date)] = [
+            (500.00, "Rent", calendar.date(byAdding: .day, value: -35, to: now)!),
+            (120.00, "Electric Bill", calendar.date(byAdding: .day, value: -36, to: now)!),
+            (65.00, "Internet", calendar.date(byAdding: .day, value: -36, to: now)!),
+        ]
+        
+        for (amount, category, date) in currentTransactions {
+            context.insert(TransactionEntity(
+                id: UUID(), amount: amount, createdAt: date,
+                clientGeneratedId: UUID().uuidString, periodId: currentPeriodId,
+                isDeleted: false, isCredit: false, categoryId: UUID(), categoryName: category
+            ))
+        }
+        
+        for (amount, category, date) in pastTransactions {
+            context.insert(TransactionEntity(
+                id: UUID(), amount: amount, createdAt: date,
+                clientGeneratedId: UUID().uuidString, periodId: pastPeriodId,
+                isDeleted: false, isCredit: false, categoryId: UUID(), categoryName: category
+            ))
+        }
+        
+        try? context.save()
+    }
+}
+
+#Preview {
+    HistoryPreview()
+        .modelContainer(for: TransactionEntity.self, inMemory: true)
 }

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(ThemeManager.self) private var themeManager
+    @AppStorage("showPastPeriodExpenses") private var showPastPeriodExpenses = true
 
     var body: some View {
         List {
@@ -34,6 +35,15 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
 
                 Text("El tema se guarda automáticamente y se aplica en toda la app.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Historial") {
+                Toggle("Mostrar gastos de periodos anteriores", isOn: $showPastPeriodExpenses)
+                    .tint(Color.minus.primaryAction)
+
+                Text("Muestra u oculta los gastos de periodos de presupuesto pasados en el historial.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
