@@ -11,7 +11,6 @@ struct BudgetDetailsSheet: View {
     @Environment(\.dismiss) var dismiss
     let viewModel: BudgetPeriodViewModel
 
-    @State private var selectedPeriod: BudgetPeriod = .daily
     @State private var showEndPeriodAlert = false
 
     var body: some View {
@@ -31,9 +30,9 @@ struct BudgetDetailsSheet: View {
                                 PeriodCard(
                                     title: period.displayTitle,
                                     amount: splitAmount(for: period),
-                                    isSelected: selectedPeriod == period
+                                    isSelected: viewModel.selectedSplitMode == period
                                 ) {
-                                    selectedPeriod = period
+                                    viewModel.updateSplitMode(period)
                                 }
                             }
                         }

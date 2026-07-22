@@ -112,6 +112,11 @@ struct EditorView: View {
         .topSheet(isPresented: $isShowingHistorySheet) {
             HistoryView()
         }
+        .onChange(of: isShowingHistorySheet) { _, isShowing in
+            if !isShowing {
+                Task { await budgetVM?.loadSpending() }
+            }
+        }
         .alert("Error", isPresented: Binding(
             get: { viewModel?.errorMessage != nil },
             set: { if !$0 { viewModel?.errorMessage = nil } }

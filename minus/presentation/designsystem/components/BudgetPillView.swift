@@ -17,11 +17,9 @@ struct BudgetPillView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                // Background
                 Capsule()
-                    .fill(Color.minus.surface)
+                    .fill(pillColor.opacity(0.15))
 
-                // Progress fill
                 Capsule()
                     .fill(pillColor.opacity(0.35))
                     .frame(width: geo.size.width * min(CGFloat(progress), 1.0))
@@ -34,7 +32,7 @@ struct BudgetPillView: View {
                 // Content
                 if isExceeded {
                     Text("Presupuesto excedido")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(pillColor)
                 } else {
                     HStack {
