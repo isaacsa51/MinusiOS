@@ -37,13 +37,13 @@ struct TopSheetContainer<Content: View>: View {
             .transition(.opacity)
     }
 
-
     private var sheet: some View {
         VStack(spacing: 0) {
             header
             divider
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            dismissHandle
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .frame(maxHeight: UIScreen.main.bounds.height * sheetHeightFraction, alignment: .top)
@@ -58,7 +58,6 @@ struct TopSheetContainer<Content: View>: View {
         )
         .ignoresSafeArea(edges: .top)
         .offset(y: sheetDragOffset)
-        .simultaneousGesture(sheetDragGesture)
         .transition(.move(edge: .top))
     }
 
@@ -85,21 +84,32 @@ struct TopSheetContainer<Content: View>: View {
             .frame(height: 0.5)
     }
 
-    private var sheetDragGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                guard value.translation.height < 0 else { return }
-                sheetDragOffset = value.translation.height * resistance
-            }
-            .onEnded { value in
-                if value.translation.height < -dismissThreshold {
-                    close()
-                } else {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                        sheetDragOffset = 0
+    private var dismissHandle: some View {
+        VStack(spacing: 6) {
+            Divider()
+            Capsule()
+                .fill(Color.minus.textSecondary.opacity(0.4))
+                .frame(width: 36, height: 4)
+                .padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    guard value.translation.height < 0 else { return }
+                    sheetDragOffset = value.translation.height * resistance
+                }
+                .onEnded { value in
+                    if value.translation.height < -dismissThreshold {
+                        close()
+                    } else {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                            sheetDragOffset = 0
+                        }
                     }
                 }
-            }
+        )
     }
 
     private func close() {
