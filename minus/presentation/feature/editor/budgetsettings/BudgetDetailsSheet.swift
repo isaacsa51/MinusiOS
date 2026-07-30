@@ -12,6 +12,7 @@ struct BudgetDetailsSheet: View {
     let viewModel: BudgetPeriodViewModel
 
     @State private var showEndPeriodAlert = false
+    @State private var showEditBudgetSheet = false
 
     var body: some View {
         NavigationStack {
@@ -38,8 +39,6 @@ struct BudgetDetailsSheet: View {
                         }
                     }
 
-                    Spacer(minLength: 20)
-
                     Button(role: .destructive) {
                         showEndPeriodAlert = true
                     } label: {
@@ -64,6 +63,18 @@ struct BudgetDetailsSheet: View {
                             .foregroundStyle(Color.minus.textSecondary)
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        viewModel.populateFormFromActivePeriod()
+                        showEditBudgetSheet = true
+                    } label: {
+                        Image(systemName: "pencil.circle.fill")
+                            .foregroundStyle(Color.minus.textSecondary)
+                    }
+                }
+            }
+            .sheet(isPresented: $showEditBudgetSheet) {
+                NewBudgetPeriodSheet(viewModel: viewModel)
             }
             .alert("Error", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
@@ -74,6 +85,7 @@ struct BudgetDetailsSheet: View {
                 Text(viewModel.errorMessage ?? "")
             }
             // generate "alert dialog" for ending early the period
+            .presentationSizing(.fitted)
             .confirmationDialog("Terminar periodo actual?", isPresented: $showEndPeriodAlert, titleVisibility: .visible) {
                 Button("Finalizar y crear uno nuevo", role: .destructive) {
                     // TODO: call FinishPeriodEarlyUseCase or delegate it into the viewmodel to not tight UI with business logic
@@ -120,3 +132,56 @@ extension BudgetPeriod {
         }
     }
 }
+private class PreviewPeriodRepository: PeriodRepository {
+    func save(period: PeriodKey) async throws {}
+    func getPeriod(id: UUID) async throws -> PeriodKey? { nil }
+    func getActivePeriod() async throws -> PeriodKey? {
+        PeriodKey(
+            id: UUID(),
+            startDate: Date(),
+            endDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()),
+            mappingNode: .activeBucket,
+            totalBudget: 15000,
+            currency: "MXN",
+            remainingStrategy: .SPLIT_EQUALLY,
+            periodType: .monthly,
+            daysInPeriod: 30
+        )
+    }
+    func getAllPeriods() async throws -> [PeriodKey] { [] }
+    func closePeriod(id: UUID, finalEndDate: Date) async throws {}
+}
+
+private class PreviewTransactionRepository: TransactionRepository {
+    func save(transaction: Transaction) async throws {}
+    func delete(transactionId: UUID) async throws {}
+    func getTransaction(id: UUID) async throws -> Transaction? { nil }
+    func getAllTransactions() async throws -> [Transaction] { [] }
+    func getTransactions(forPeriod periodId: UUID) async throws -> [Transaction] { [] }
+    func getTransactions(forCategory categoryId: UUID) async throws -> [Transaction] { [] }
+    func getTransactions(between startDate: Date, and endDate: Date) async throws -> [Transaction] { [] }
+}
+
+#Preview {
+    BudgetDetailsSheet(
+        viewModel: {
+            let vm = BudgetPeriodViewModel(
+                periodRepo: PreviewPeriodRepository(),
+                transactionRepo: PreviewTransactionRepository()
+            )
+            vm.activePeriod = PeriodKey(
+                id: UUID(),
+                startDate: Date(),
+                endDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()),
+                mappingNode: .activeBucket,
+                totalBudget: 15000,
+                currency: "MXN",
+                remainingStrategy: .SPLIT_EQUALLY,
+                periodType: .monthly,
+                daysInPeriod: 30
+            )
+            return vm
+        }()
+    )
+}
+

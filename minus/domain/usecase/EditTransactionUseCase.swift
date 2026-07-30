@@ -25,6 +25,9 @@ class EditTransactionUseCase {
             createdAt: existingTransaction.createdAt,
             clientGeneratedId: existingTransaction.clientGeneratedId,
             periodId: existingTransaction.periodId,
+            recurrentFrequency: existingTransaction.recurrentFrequency,
+            recurrentEndDate: existingTransaction.recurrentEndDate,
+            subscriptionDay: existingTransaction.subscriptionDay,
             categoryId: newCategoryId ?? existingTransaction.categoryId,
             categoryName: existingTransaction.categoryName,
         )

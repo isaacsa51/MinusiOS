@@ -20,6 +20,9 @@ class TransactionEntity {
     var isCredit: Bool
     var categoryId: UUID
     var categoryName: String?
+    var recurrentFrequency: String?
+    var recurrentEndDate: Date?
+    var subscriptionDay: Int?
     
     init(
         id: UUID,
@@ -30,7 +33,10 @@ class TransactionEntity {
         isDeleted: Bool,
         isCredit: Bool,
         categoryId: UUID,
-        categoryName: String? = nil
+        categoryName: String? = nil,
+        recurrentFrequency: String? = nil,
+        recurrentEndDate: Date? = nil,
+        subscriptionDay: Int? = nil
     ) {
         self.id = id
         self.amount = amount
@@ -41,5 +47,8 @@ class TransactionEntity {
         self.isCredit = isCredit
         self.categoryId = categoryId
         self.categoryName = categoryName
+        self.recurrentFrequency = recurrentFrequency
+        self.recurrentEndDate = recurrentEndDate
+        self.subscriptionDay = subscriptionDay
     }
 }

@@ -193,4 +193,22 @@ class BudgetPeriodViewModel {
         formCurrency = Currency.all.first { $0.code == "MXN" } ?? Currency.all[0]
         formRemainingStrategy = .SPLIT_EQUALLY
     }
+
+    func populateFormFromActivePeriod() {
+        guard let period = activePeriod else { return }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        formBudgetAmount = formatter.string(from: period.totalBudget as NSDecimalNumber) ?? ""
+        formStartDate = period.startDate
+        formEndDate = period.endDate ?? BudgetSettings(
+            totalBudget: period.totalBudget,
+            period: period.periodType,
+            startDate: period.startDate,
+            daysInPeriod: period.daysInPeriod
+        ).getPeriodEndDate()
+        formCurrency = Currency.find(byCode: period.currency) ?? Currency.all[0]
+        formRemainingStrategy = period.remainingStrategy
+    }
 }

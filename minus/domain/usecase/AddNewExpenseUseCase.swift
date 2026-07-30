@@ -17,16 +17,26 @@ class AddNewExpenseUseCase {
         self.periodRepository = periodRepo
     }
     
-    func execute(amount: Decimal, categoryId: UUID, categoryName: String?) async throws {
-        
-        // first we check if the users isn't saving an empty transactions
-        // then we guard that the user has a current active budget period
+    func execute(
+        amount: Decimal,
+        categoryId: UUID,
+        categoryName: String?,
+        recurrentFrequency: RecurrentFrequency? = nil,
+        recurrentEndDate: Date? = nil,
+        subscriptionDay: Int? = nil
+    ) async throws {
         guard amount > 0 else {
             throw TransactionError.invalidAmount
         }
         
         guard let activePeriod = try await periodRepository.getActivePeriod() else {
             throw TransactionError.noActivePeriod
+        }
+
+        if recurrentFrequency == .MONTHLY {
+            guard let day = subscriptionDay, (1...31).contains(day) else {
+                throw TransactionError.invalidSubscriptionDay
+            }
         }
     
         let transaction = Transaction(
@@ -36,14 +46,26 @@ class AddNewExpenseUseCase {
             clientGeneratedId: UUID().uuidString,
             periodId: activePeriod.id,
             isDeleted: false,
-            recurrentFrequency: nil,
-            recurrentEndDate: nil,
-            subscriptionDay: nil,
+            recurrentFrequency: recurrentFrequency,
+            recurrentEndDate: recurrentEndDate,
+            subscriptionDay: subscriptionDay,
             categoryId: categoryId,
             categoryName: categoryName,
             isCredit: false,
         )
         
         try await repository.save(transaction: transaction)
+
+        if let frequency = recurrentFrequency {
+            RecurringNotificationService.schedule(
+                transactionId: transaction.id,
+                amount: amount,
+                categoryName: categoryName,
+                frequency: frequency,
+                startDate: transaction.createdAt,
+                endDate: recurrentEndDate,
+                subscriptionDay: subscriptionDay
+            )
+        }
     }
 }

@@ -28,7 +28,10 @@ class TransactionRepositoryImpl: TransactionRepository {
             isDeleted: transaction.isDeleted,
             isCredit: transaction.isCredit,
             categoryId: transaction.categoryId,
-            categoryName: transaction.categoryName
+            categoryName: transaction.categoryName,
+            recurrentFrequency: transaction.recurrentFrequency?.rawValue,
+            recurrentEndDate: transaction.recurrentEndDate,
+            subscriptionDay: transaction.subscriptionDay
         )
         
         context.insert(entity)
@@ -124,6 +127,9 @@ class TransactionRepositoryImpl: TransactionRepository {
             createdAt: entity.createdAt,
             clientGeneratedId: entity.clientGeneratedId,
             periodId: entity.periodId,
+            recurrentFrequency: entity.recurrentFrequency.flatMap { RecurrentFrequency(rawValue: $0) },
+            recurrentEndDate: entity.recurrentEndDate,
+            subscriptionDay: entity.subscriptionDay,
             categoryId: entity.categoryId,
             categoryName: entity.categoryName
         )

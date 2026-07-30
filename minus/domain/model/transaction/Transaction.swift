@@ -23,6 +23,17 @@ struct Transaction: Identifiable {
     var isCredit: Bool = false
 }
 
-enum RecurrentFrequency {
-    case WEEKLY, BIWEEKLY, DAILY
+enum RecurrentFrequency: String, CaseIterable {
+    case DAILY, WEEKLY, BIWEEKLY, MONTHLY
+}
+
+extension RecurrentFrequency {
+    var displayName: String {
+        switch self {
+        case .DAILY: return "Diario"
+        case .WEEKLY: return "Semanal"
+        case .BIWEEKLY: return "Quincenal"
+        case .MONTHLY: return "Mensual"
+        }
+    }
 }

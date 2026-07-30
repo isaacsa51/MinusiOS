@@ -1,8 +1,3 @@
-//
-//  CategoryInputRow.swift
-//  minus
-//
-
 import SwiftUI
 
 struct CategoryInputRow: View {
@@ -25,6 +20,16 @@ struct CategoryInputRow: View {
                     .textInputAutocapitalization(.words)
                     .submitLabel(.done)
                     .focused($isInputFocused)
+
+                if isInputFocused {
+                    Button {
+                        isInputFocused = false
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

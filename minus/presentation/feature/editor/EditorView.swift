@@ -41,26 +41,52 @@ struct EditorView: View {
 
                         Spacer()
 
-                        Button(action: {
-                            router.navigate(to: .analytics)
-                        }) {
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(Color.minus.textPrimary)
-                                .frame(width: 44, height: 44)
-                        }
-                        .accessibilityLabel("Analytics")
+                        if viewModel.hasValue {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.isRecurring.toggle()
+                                    if viewModel.isRecurring {
+                                        viewModel.showRecurrenceOptions = true
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: viewModel.isRecurring ? "repeat.circle.fill" : "repeat.circle")
+                                    .font(.system(size: 24, weight: .semibold))
+                                    .foregroundStyle(
+                                        viewModel.isRecurring
+                                            ? Color.minus.primaryAction
+                                            : Color.minus.textSecondary
+                                    )
+                                    .frame(width: 44, height: 44)
+                            }
+                            .accessibilityLabel("Recurring payment")
+                            .transition(.blurReplace)
+                        } else {
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    router.navigate(to: .analytics)
+                                }) {
+                                    Image(systemName: "chart.line.uptrend.xyaxis")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(Color.minus.textPrimary)
+                                        .frame(width: 44, height: 44)
+                                }
+                                .accessibilityLabel("Analytics")
 
-                        Button(action: {
-                            router.navigate(to: .settings)
-                        }) {
-                            Image(systemName: "gearshape")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(Color.minus.textPrimary)
-                                .frame(width: 44, height: 44)
+                                Button(action: {
+                                    router.navigate(to: .settings)
+                                }) {
+                                    Image(systemName: "gearshape")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(Color.minus.textPrimary)
+                                        .frame(width: 44, height: 44)
+                                }
+                                .accessibilityLabel("Settings")
+                            }
+                            .transition(.blurReplace)
                         }
-                        .accessibilityLabel("Settings")
                     }
+                    .animation(.easeInOut(duration: 0.25), value: viewModel.hasValue)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
@@ -69,6 +95,17 @@ struct EditorView: View {
                         .offset(y: amountDragOffset)
                         .contentShape(Rectangle())
                         .gesture(amountDragGesture)
+
+                    if viewModel.isRecurring {
+                        HStack(spacing: 4) {
+                            Image(systemName: "repeat")
+                                .font(.system(size: 12))
+                            Text(viewModel.selectedFrequency.displayName)
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundStyle(Color.minus.primaryAction)
+                        .transition(.opacity)
+                    }
 
                     Spacer()
 
@@ -107,6 +144,14 @@ struct EditorView: View {
         )) {
             if let vm = budgetVM {
                 NewBudgetPeriodSheet(viewModel: vm)
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel?.showRecurrenceOptions ?? false },
+            set: { viewModel?.showRecurrenceOptions = $0 }
+        )) {
+            if let vm = viewModel {
+                RecurrenceOptionsSheet(viewModel: vm)
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {

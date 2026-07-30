@@ -63,6 +63,7 @@ struct NewBudgetPeriodSheet: View {
             }
         }
         .background(Color.minus.background.ignoresSafeArea())
+        .presentationSizing(.fitted)
         .interactiveDismissDisabled(viewModel.activePeriod == nil)
         .alert("Error", isPresented: Binding(
             get: { viewModel.errorMessage != nil },

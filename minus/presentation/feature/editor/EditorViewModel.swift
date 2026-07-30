@@ -19,6 +19,13 @@ class EditorViewModel {
     var errorMessage: String?
     
     var onTransactionSaved: (() async -> Void)?
+
+    // Recurrence state
+    var isRecurring: Bool = false
+    var selectedFrequency: RecurrentFrequency = .MONTHLY
+    var subscriptionDay: Int = Calendar.current.component(.day, from: Date())
+    var recurrentEndDate: Date = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
+    var showRecurrenceOptions: Bool = false
     
 
 
@@ -228,12 +235,19 @@ class EditorViewModel {
             ))
         }
         
+        let frequency: RecurrentFrequency? = isRecurring ? selectedFrequency : nil
+        let endDate: Date? = isRecurring ? recurrentEndDate : nil
+        let dayOfMonth: Int? = (isRecurring && selectedFrequency == .MONTHLY) ? subscriptionDay : nil
+
         Task {
             do {
                 try await addExpenseUseCase.execute(
                     amount: amountValue,
                     categoryId: categoryId,
-                    categoryName: categoryName
+                    categoryName: categoryName,
+                    recurrentFrequency: frequency,
+                    recurrentEndDate: endDate,
+                    subscriptionDay: dayOfMonth
                 )
                 await loadSavedCategories()
                 await onTransactionSaved?()
@@ -244,6 +258,7 @@ class EditorViewModel {
         
         rawAmount = "0"
         categoryText = ""
+        resetRecurrence()
     }
     
     func loadSavedCategories() async {
@@ -270,6 +285,15 @@ class EditorViewModel {
     func clearAll() {
         rawAmount = "0"
         categoryText = ""
+        resetRecurrence()
+    }
+
+    func resetRecurrence() {
+        isRecurring = false
+        selectedFrequency = .MONTHLY
+        subscriptionDay = Calendar.current.component(.day, from: Date())
+        recurrentEndDate = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
+        showRecurrenceOptions = false
     }
     
     func selectCategory(_ category: Category) {
