@@ -10,6 +10,25 @@ struct CategoryInputRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            if showBadges {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(viewModel.savedCategories) { category in
+                            if let name = category.name {
+                                CategoryBadgeView(
+                                    name: name,
+                                    isSelected: viewModel.categoryText == name,
+                                    onTap: { viewModel.selectCategory(category) }
+                                )
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .defaultScrollAnchor(.trailing)
+                .transition(.opacity)
+            }
+
             HStack(spacing: 6) {
                 Image(systemName: "tag")
                     .font(.system(size: 14))
@@ -36,23 +55,6 @@ struct CategoryInputRow: View {
             .background(Color.minus.surface)
             .clipShape(Capsule())
             .frame(maxWidth: isInputFocused ? .infinity : 140)
-
-            if showBadges {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(viewModel.savedCategories) { category in
-                            if let name = category.name {
-                                CategoryBadgeView(
-                                    name: name,
-                                    isSelected: viewModel.categoryText == name,
-                                    onTap: { viewModel.selectCategory(category) }
-                                )
-                            }
-                        }
-                    }
-                }
-                .transition(.opacity)
-            }
         }
         .animation(.easeInOut(duration: 0.2), value: isInputFocused)
         .padding(.horizontal, 16)

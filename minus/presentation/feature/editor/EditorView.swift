@@ -26,72 +26,105 @@ struct EditorView: View {
             if let viewModel {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
-                        Button(action: {
-                            isShowingBudgetDetailsSheet = true
-                        }) {
-                            BudgetPillView(
-                                title: budgetVM?.pillTitle ?? "Cargando...",
-                                amount: budgetVM?.pillAmount ?? "...",
-                                pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary,
-                                progress: budgetVM?.spendingProgress ?? 0,
-                                isExceeded: budgetVM?.isExceeded ?? false
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        if viewModel.hasValue {
+                        if viewModel.isEditing {
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) {
-                                    viewModel.isRecurring.toggle()
-                                    if viewModel.isRecurring {
-                                        viewModel.showRecurrenceOptions = true
-                                    }
+                                    viewModel.clearAll()
                                 }
                             } label: {
-                                Image(systemName: viewModel.isRecurring ? "repeat.circle.fill" : "repeat.circle")
-                                    .font(.system(size: 24, weight: .semibold))
-                                    .foregroundStyle(
-                                        viewModel.isRecurring
-                                            ? Color.minus.primaryAction
-                                            : Color.minus.textSecondary
-                                    )
-                                    .frame(width: 44, height: 44)
+                                BudgetPillView(
+                                    title: "",
+                                    amount: "",
+                                    pillColor: Color.minus.destructive,
+                                    progress: 1.0
+                                )
+                                .overlay {
+                                    Text("Tap here to cancel edit")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(Color.minus.destructive)
+                                }
                             }
-                            .accessibilityLabel("Recurring payment")
+                            .buttonStyle(.plain)
                             .transition(.blurReplace)
                         } else {
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    router.navigate(to: .analytics)
-                                }) {
-                                    Image(systemName: "chart.line.uptrend.xyaxis")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(Color.minus.textPrimary)
-                                        .frame(width: 44, height: 44)
-                                }
-                                .accessibilityLabel("Analytics")
-
-                                Button(action: {
-                                    router.navigate(to: .settings)
-                                }) {
-                                    Image(systemName: "gearshape")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(Color.minus.textPrimary)
-                                        .frame(width: 44, height: 44)
-                                }
-                                .accessibilityLabel("Settings")
+                            Button(action: {
+                                isShowingBudgetDetailsSheet = true
+                            }) {
+                                BudgetPillView(
+                                    title: budgetVM?.pillTitle ?? "Cargando...",
+                                    amount: budgetVM?.pillAmount ?? "...",
+                                    pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary,
+                                    progress: budgetVM?.spendingProgress ?? 0,
+                                    isExceeded: budgetVM?.isExceeded ?? false
+                                )
                             }
+                            .buttonStyle(.plain)
                             .transition(.blurReplace)
+                        }
+
+                        if !viewModel.isEditing {
+                            Spacer()
+
+                            if viewModel.hasValue {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        viewModel.isRecurring.toggle()
+                                        if viewModel.isRecurring {
+                                            viewModel.showRecurrenceOptions = true
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: viewModel.isRecurring ? "repeat.circle.fill" : "repeat.circle")
+                                        .font(.system(size: 24, weight: .semibold))
+                                        .foregroundStyle(
+                                            viewModel.isRecurring
+                                                ? Color.minus.primaryAction
+                                                : Color.minus.textSecondary
+                                        )
+                                        .frame(width: 44, height: 44)
+                                }
+                                .accessibilityLabel("Recurring payment")
+                                .transition(.blurReplace)
+                            } else {
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        router.navigate(to: .analytics)
+                                    }) {
+                                        Image(systemName: "chart.line.uptrend.xyaxis")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(Color.minus.textPrimary)
+                                            .frame(width: 44, height: 44)
+                                    }
+                                    .accessibilityLabel("Analytics")
+
+                                    Button(action: {
+                                        router.navigate(to: .settings)
+                                    }) {
+                                        Image(systemName: "gearshape")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(Color.minus.textPrimary)
+                                            .frame(width: 44, height: 44)
+                                    }
+                                    .accessibilityLabel("Settings")
+                                }
+                                .transition(.blurReplace)
+                            }
                         }
                     }
                     .animation(.easeInOut(duration: 0.25), value: viewModel.hasValue)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
+                    if viewModel.isEditing {
+                        EditingDateHeader(date: Binding(
+                            get: { viewModel.editingDate ?? Date() },
+                            set: { viewModel.editingDate = $0 }
+                        ))
+                        .transition(.blurReplace)
+                    }
+
                     AmountDisplay(viewModel: viewModel)
-                        .padding(.top, 16)
+                        .padding(.top, viewModel.isEditing ? 8 : 16)
                         .offset(y: amountDragOffset)
                         .contentShape(Rectangle())
                         .gesture(amountDragGesture)
@@ -155,7 +188,12 @@ struct EditorView: View {
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
-            HistoryView(activePeriodId: budgetVM?.activePeriod?.id)
+            HistoryView(activePeriodId: budgetVM?.activePeriod?.id) { id, amount, categoryName, date in
+                viewModel?.startEditing(id: id, amount: amount, categoryName: categoryName, date: date)
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    isShowingHistorySheet = false
+                }
+            }
         }
         .onChange(of: isShowingHistorySheet) { _, isShowing in
             if !isShowing {
@@ -220,6 +258,28 @@ private struct AmountDisplay: View {
             }
         }
         .animation(.easeInOut(duration: 0.15), value: viewModel.expressionResult != nil)
+    }
+}
+
+private struct EditingDateHeader: View {
+    @Binding var date: Date
+
+    var body: some View {
+        HStack(spacing: 12) {
+            DatePicker("Date", selection: $date, displayedComponents: .date)
+                .labelsHidden()
+                .datePickerStyle(.compact)
+                .tint(Color.minus.primaryAction)
+
+            DatePicker("Time", selection: $date, displayedComponents: .hourAndMinute)
+                .labelsHidden()
+                .datePickerStyle(.compact)
+                .tint(Color.minus.primaryAction)
+
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
     }
 }
 

@@ -20,6 +20,12 @@ class EditorViewModel {
     
     var onTransactionSaved: (() async -> Void)?
 
+    // Edit mode state
+    private(set) var editingTransactionId: UUID?
+    var editingDate: Date?
+    
+    var isEditing: Bool { editingTransactionId != nil }
+
     // Recurrence state
     var isRecurring: Bool = false
     var selectedFrequency: RecurrentFrequency = .MONTHLY
@@ -50,6 +56,7 @@ class EditorViewModel {
     }
     
     private let addExpenseUseCase: AddNewExpenseUseCase
+    private let editTransactionUseCase: EditTransactionUseCase
     private let transactionRepository: TransactionRepository
     
     private static let operatorSet: Set<Character> = ["+", "-", "*", "/"]
@@ -57,6 +64,22 @@ class EditorViewModel {
     init(transactionRepo: TransactionRepository, periodRepo: PeriodRepository) {
         self.transactionRepository = transactionRepo
         self.addExpenseUseCase = AddNewExpenseUseCase(repository: transactionRepo, periodRepo: periodRepo)
+        self.editTransactionUseCase = EditTransactionUseCase(repository: transactionRepo)
+    }
+    
+    func startEditing(id: UUID, amount: Double, categoryName: String?, date: Date) {
+        editingTransactionId = id
+        editingDate = date
+        
+        // Format the amount: remove trailing zeros
+        let formatted = String(format: "%.2f", amount)
+        var result = formatted
+        if result.contains(".") {
+            while result.hasSuffix("0") { result.removeLast() }
+            if result.hasSuffix(".") { result.removeLast() }
+        }
+        rawAmount = result
+        categoryText = categoryName ?? ""
     }
     
     func processNumber(button: NumpadButtonArgs) {
@@ -235,29 +258,48 @@ class EditorViewModel {
             ))
         }
         
-        let frequency: RecurrentFrequency? = isRecurring ? selectedFrequency : nil
-        let endDate: Date? = isRecurring ? recurrentEndDate : nil
-        let dayOfMonth: Int? = (isRecurring && selectedFrequency == .MONTHLY) ? subscriptionDay : nil
+        if let editId = editingTransactionId {
+            Task {
+                do {
+                    try await editTransactionUseCase.execute(
+                        transactionId: editId,
+                        newAmount: amountValue,
+                        newCategoryName: categoryName,
+                        newDate: editingDate
+                    )
+                    await loadSavedCategories()
+                    await onTransactionSaved?()
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            }
+        } else {
+            let frequency: RecurrentFrequency? = isRecurring ? selectedFrequency : nil
+            let endDate: Date? = isRecurring ? recurrentEndDate : nil
+            let dayOfMonth: Int? = (isRecurring && selectedFrequency == .MONTHLY) ? subscriptionDay : nil
 
-        Task {
-            do {
-                try await addExpenseUseCase.execute(
-                    amount: amountValue,
-                    categoryId: categoryId,
-                    categoryName: categoryName,
-                    recurrentFrequency: frequency,
-                    recurrentEndDate: endDate,
-                    subscriptionDay: dayOfMonth
-                )
-                await loadSavedCategories()
-                await onTransactionSaved?()
-            } catch {
-                errorMessage = error.localizedDescription
+            Task {
+                do {
+                    try await addExpenseUseCase.execute(
+                        amount: amountValue,
+                        categoryId: categoryId,
+                        categoryName: categoryName,
+                        recurrentFrequency: frequency,
+                        recurrentEndDate: endDate,
+                        subscriptionDay: dayOfMonth
+                    )
+                    await loadSavedCategories()
+                    await onTransactionSaved?()
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
             }
         }
         
         rawAmount = "0"
         categoryText = ""
+        editingTransactionId = nil
+        editingDate = nil
         resetRecurrence()
     }
     
@@ -285,6 +327,8 @@ class EditorViewModel {
     func clearAll() {
         rawAmount = "0"
         categoryText = ""
+        editingTransactionId = nil
+        editingDate = nil
         resetRecurrence()
     }
 

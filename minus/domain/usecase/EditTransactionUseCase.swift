@@ -14,7 +14,7 @@ class EditTransactionUseCase {
         self.repository = repository
     }
     
-    func execute(transactionId: UUID, newAmount: Decimal? = nil, newCategoryId: UUID? = nil) async throws {
+    func execute(transactionId: UUID, newAmount: Decimal? = nil, newCategoryId: UUID? = nil, newCategoryName: String? = nil, newDate: Date? = nil) async throws {
         guard let existingTransaction = try await repository.getTransaction(id: transactionId) else {
             throw TransactionError.transactionNotFound
         }
@@ -22,17 +22,16 @@ class EditTransactionUseCase {
         let updatedTransaction = Transaction(
             id: existingTransaction.id,
             amount: newAmount ?? existingTransaction.amount,
-            createdAt: existingTransaction.createdAt,
+            createdAt: newDate ?? existingTransaction.createdAt,
             clientGeneratedId: existingTransaction.clientGeneratedId,
             periodId: existingTransaction.periodId,
             recurrentFrequency: existingTransaction.recurrentFrequency,
             recurrentEndDate: existingTransaction.recurrentEndDate,
             subscriptionDay: existingTransaction.subscriptionDay,
             categoryId: newCategoryId ?? existingTransaction.categoryId,
-            categoryName: existingTransaction.categoryName,
+            categoryName: newCategoryName ?? existingTransaction.categoryName
         )
         
-    
         try await repository.save(transaction: updatedTransaction)
     }
 }

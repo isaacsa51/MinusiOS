@@ -10,6 +10,7 @@ import SwiftData
 
 struct HistoryView: View {
     var activePeriodId: UUID?
+    var onEditTransaction: ((_ id: UUID, _ amount: Double, _ categoryName: String?, _ date: Date) -> Void)?
     
     @Environment(\.transactionRepository) private var transactionRepository
     
@@ -112,7 +113,7 @@ struct HistoryView: View {
                                 }
                             },
                             onEdit: {
-                                // TODO: wire up edit flow
+                                onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt)
                             },
                             onDelete: {
                                 deleteTransaction(id: tx.id)

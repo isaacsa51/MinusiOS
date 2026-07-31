@@ -5,13 +5,7 @@
 
 import Foundation
 
-/// Formats raw numeric input into currency display strings.
-/// Handles grouping separators (e.g. "4250" → "4,250") and decimal input.
 enum CurrencyInputFormatter {
-
-    /// Formats a raw numeric string (e.g. "4250.5") into a display string with
-    /// grouping separators (e.g. "4,250.5"). Preserves trailing dot and
-    /// partial decimals for live typing.
     static func format(_ raw: String) -> String {
         guard !raw.isEmpty, raw != "0" else { return "0" }
 
@@ -29,17 +23,14 @@ enum CurrencyInputFormatter {
         return formattedInteger
     }
 
-    /// Formats a raw numeric string with a currency symbol prefix.
     static func formatWithSymbol(_ raw: String, symbol: String = "$") -> String {
         let formatted = format(raw)
         return "\(symbol)\(formatted)"
     }
 
-    /// Strips grouping separators from a formatted string back to raw digits + decimal.
     static func stripFormatting(_ formatted: String) -> String {
         let stripped = formatted.replacingOccurrences(of: ",", with: "")
 
-        // Only allow digits and a single decimal point
         var result = ""
         var hasDecimal = false
         for char in stripped {
@@ -53,10 +44,7 @@ enum CurrencyInputFormatter {
         return result.isEmpty ? "0" : result
     }
 
-    // MARK: - Private
-
     private static func formatIntegerPart(_ value: String) -> String {
-        // Remove leading zeros
         let cleaned = String(value.drop { $0 == "0" })
         guard !cleaned.isEmpty else { return "0" }
 
