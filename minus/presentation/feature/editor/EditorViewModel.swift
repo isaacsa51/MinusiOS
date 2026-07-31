@@ -7,10 +7,17 @@
 
 import SwiftUI
 
+enum TransactionMode {
+    case expense
+    case income
+    case decrease
+}
+
 @MainActor
 @Observable
 class EditorViewModel {
     private(set) var rawAmount: String = "0"
+    private(set) var transactionMode: TransactionMode = .expense
     
     var categoryText: String = ""
     
@@ -35,8 +42,12 @@ class EditorViewModel {
     
 
 
+    var isIncomeOrDecreaseMode: Bool {
+        transactionMode == .income || transactionMode == .decrease
+    }
+
     var hasValue: Bool {
-        rawAmount != "0"
+        rawAmount != "0" || isIncomeOrDecreaseMode
     }
     
     var hasExpression: Bool {
@@ -44,7 +55,15 @@ class EditorViewModel {
     }
 
     var amount: String {
-        formatExpression(rawAmount)
+        let formatted = formatExpression(rawAmount)
+        switch transactionMode {
+        case .expense:
+            return formatted
+        case .income:
+            return "+$\(formatted)"
+        case .decrease:
+            return "\u{2212}$\(formatted)"
+        }
     }
     
     var expressionResult: String? {
@@ -67,9 +86,10 @@ class EditorViewModel {
         self.editTransactionUseCase = EditTransactionUseCase(repository: transactionRepo)
     }
     
-    func startEditing(id: UUID, amount: Double, categoryName: String?, date: Date) {
+    func startEditing(id: UUID, amount: Double, categoryName: String?, date: Date, isCredit: Bool = false) {
         editingTransactionId = id
         editingDate = date
+        transactionMode = isCredit ? .income : .expense
         
         // Format the amount: remove trailing zeros
         let formatted = String(format: "%.2f", amount)
@@ -105,6 +125,8 @@ class EditorViewModel {
         if button.type == .action, button.icon == "delete.left" {
             if rawAmount.count > 1 {
                 rawAmount.removeLast()
+            } else if rawAmount == "0" && isIncomeOrDecreaseMode {
+                transactionMode = .expense
             } else {
                 rawAmount = "0"
             }
@@ -130,7 +152,14 @@ class EditorViewModel {
             return
         }
         
-        guard rawAmount != "0" else { return }
+        if rawAmount == "0" {
+            if button.icon == "plus" {
+                transactionMode = .income
+            } else if button.icon == "minus" {
+                transactionMode = .decrease
+            }
+            return
+        }
         guard let lastChar = rawAmount.last else { return }
         
         let op: String
@@ -245,7 +274,17 @@ class EditorViewModel {
         }
         
         let trimmed = categoryText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let categoryName = trimmed.isEmpty ? nil : trimmed
+        let categoryName: String?
+        if trimmed.isEmpty {
+            switch transactionMode {
+            case .income: categoryName = "Unnamed income"
+            case .decrease: categoryName = "Unnamed decrease"
+            case .expense: categoryName = nil
+            }
+        } else {
+            categoryName = trimmed
+        }
+        let isCredit = transactionMode == .income
         let categoryId = UUID()
         
         if let name = categoryName,
@@ -265,7 +304,8 @@ class EditorViewModel {
                         transactionId: editId,
                         newAmount: amountValue,
                         newCategoryName: categoryName,
-                        newDate: editingDate
+                        newDate: editingDate,
+                        newIsCredit: isCredit
                     )
                     await loadSavedCategories()
                     await onTransactionSaved?()
@@ -284,6 +324,7 @@ class EditorViewModel {
                         amount: amountValue,
                         categoryId: categoryId,
                         categoryName: categoryName,
+                        isCredit: isCredit,
                         recurrentFrequency: frequency,
                         recurrentEndDate: endDate,
                         subscriptionDay: dayOfMonth
@@ -300,6 +341,7 @@ class EditorViewModel {
         categoryText = ""
         editingTransactionId = nil
         editingDate = nil
+        transactionMode = .expense
         resetRecurrence()
     }
     
@@ -329,6 +371,7 @@ class EditorViewModel {
         categoryText = ""
         editingTransactionId = nil
         editingDate = nil
+        transactionMode = .expense
         resetRecurrence()
     }
 

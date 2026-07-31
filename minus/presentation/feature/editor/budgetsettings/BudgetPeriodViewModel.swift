@@ -147,7 +147,9 @@ class BudgetPeriodViewModel {
                 between: effectiveStart, and: endOfToday
             )
             let periodTransactions = transactions.filter { $0.periodId == period.id && !$0.isDeleted }
-            spentInSplit = periodTransactions.reduce(Decimal.zero) { $0 + $1.amount }
+            spentInSplit = periodTransactions.reduce(Decimal.zero) { total, tx in
+                tx.isCredit ? total - tx.amount : total + tx.amount
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

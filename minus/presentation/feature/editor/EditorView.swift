@@ -46,6 +46,35 @@ struct EditorView: View {
                             }
                             .buttonStyle(.plain)
                             .transition(.blurReplace)
+                        } else if viewModel.isIncomeOrDecreaseMode {
+                            let pillColor = viewModel.transactionMode == .income
+                                ? Color.minus.success
+                                : Color.minus.primaryAction
+                            let verb = viewModel.transactionMode == .income
+                                ? "will be added"
+                                : "will be subtracted"
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.clearAll()
+                                }
+                            } label: {
+                                BudgetPillView(
+                                    title: "",
+                                    amount: "",
+                                    pillColor: pillColor,
+                                    progress: 0.0
+                                )
+                                .overlay {
+                                    Text("\(viewModel.amount) \(verb)")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(pillColor)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .padding(.horizontal, 12)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.blurReplace)
                         } else {
                             Button(action: {
                                 isShowingBudgetDetailsSheet = true
@@ -62,7 +91,7 @@ struct EditorView: View {
                             .transition(.blurReplace)
                         }
 
-                        if !viewModel.isEditing {
+                        if !viewModel.isEditing && !viewModel.isIncomeOrDecreaseMode {
                             Spacer()
 
                             if viewModel.hasValue {
@@ -188,8 +217,8 @@ struct EditorView: View {
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
-            HistoryView(activePeriodId: budgetVM?.activePeriod?.id) { id, amount, categoryName, date in
-                viewModel?.startEditing(id: id, amount: amount, categoryName: categoryName, date: date)
+            HistoryView(activePeriodId: budgetVM?.activePeriod?.id) { id, amount, categoryName, date, isCredit in
+                viewModel?.startEditing(id: id, amount: amount, categoryName: categoryName, date: date, isCredit: isCredit)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                     isShowingHistorySheet = false
                 }
@@ -238,11 +267,19 @@ struct EditorView: View {
 private struct AmountDisplay: View {
     let viewModel: EditorViewModel
 
+    private var amountColor: Color {
+        switch viewModel.transactionMode {
+        case .expense: return Color.minus.textPrimary
+        case .income: return Color.minus.success
+        case .decrease: return Color.minus.primaryAction
+        }
+    }
+
     var body: some View {
         VStack(spacing: 4) {
             Text(viewModel.amount)
                 .font(.system(size: 64, weight: .bold))
-                .foregroundStyle(Color.minus.textPrimary)
+                .foregroundStyle(amountColor)
                 .padding(.trailing, 20)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

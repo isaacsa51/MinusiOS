@@ -10,7 +10,7 @@ import SwiftData
 
 struct HistoryView: View {
     var activePeriodId: UUID?
-    var onEditTransaction: ((_ id: UUID, _ amount: Double, _ categoryName: String?, _ date: Date) -> Void)?
+    var onEditTransaction: ((_ id: UUID, _ amount: Double, _ categoryName: String?, _ date: Date, _ isCredit: Bool) -> Void)?
     
     @Environment(\.transactionRepository) private var transactionRepository
     
@@ -45,7 +45,9 @@ struct HistoryView: View {
             .sorted { $0.key > $1.key }
             .map { (date, txs) in
                 let sorted = txs.sorted { $0.createdAt > $1.createdAt }
-                let total = sorted.reduce(Decimal.zero) { $0 + Decimal($1.amount) }
+                let total = sorted.reduce(Decimal.zero) { total, tx in
+                    tx.isCredit ? total - Decimal(tx.amount) : total + Decimal(tx.amount)
+                }
                 return (date: formatter.string(from: date), transactions: sorted, total: total)
             }
     }
@@ -98,9 +100,10 @@ struct HistoryView: View {
                 VStack(spacing: 0) {
                     ForEach(group.transactions) { tx in
                         TransactionRow(
-                            categoryName: tx.categoryName ?? "Expense",
+                            categoryName: tx.categoryName ?? (tx.isCredit ? "Income" : "Expense"),
                             time: Self.timeFormatter.string(from: tx.createdAt),
-                            amount: formatAmount(Decimal(tx.amount)),
+                            amount: formatAmount(Decimal(tx.amount), isCredit: tx.isCredit),
+                            isCredit: tx.isCredit,
                             isExpanded: expandedTransactionId == tx.id,
                             fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
                             onTap: {
@@ -113,7 +116,7 @@ struct HistoryView: View {
                                 }
                             },
                             onEdit: {
-                                onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt)
+                                onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isCredit)
                             },
                             onDelete: {
                                 deleteTransaction(id: tx.id)
@@ -156,13 +159,13 @@ struct HistoryView: View {
         }
     }
     
-    private func formatAmount(_ value: Decimal) -> String {
+    private func formatAmount(_ value: Decimal, isCredit: Bool = false) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 2
         let formatted = formatter.string(from: value as NSDecimalNumber) ?? "0"
-        return "$\(formatted)"
+        return isCredit ? "+$\(formatted)" : "$\(formatted)"
     }
     
     private func deleteTransaction(id: UUID) {
@@ -180,6 +183,7 @@ private struct TransactionRow: View {
     let categoryName: String
     let time: String
     let amount: String
+    let isCredit: Bool
     let isExpanded: Bool
     let fullDate: String
     let onTap: () -> Void
@@ -201,7 +205,7 @@ private struct TransactionRow: View {
                     Spacer()
                     Text(amount)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Color.minus.textPrimary)
+                        .foregroundStyle(isCredit ? Color.minus.success : Color.minus.textPrimary)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.minus.textSecondary)

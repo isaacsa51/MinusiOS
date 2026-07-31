@@ -131,7 +131,8 @@ class TransactionRepositoryImpl: TransactionRepository {
             recurrentEndDate: entity.recurrentEndDate,
             subscriptionDay: entity.subscriptionDay,
             categoryId: entity.categoryId,
-            categoryName: entity.categoryName
+            categoryName: entity.categoryName,
+            isCredit: entity.isCredit
         )
     }
 }
