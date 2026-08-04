@@ -45,7 +45,7 @@ struct minusApp: App {
                         case .history:
                             Text("Transactions History screen...")
                         case .analytics:
-                            Text("Analytics screen...")
+                            AnalyticsView()
                         }
                     }
                     .environment(router)

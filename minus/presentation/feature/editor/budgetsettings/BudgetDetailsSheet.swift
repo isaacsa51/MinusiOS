@@ -17,45 +17,76 @@ struct BudgetDetailsSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    SummaryCardView(period: viewModel.activePeriod)
+                VStack(spacing: 8) {
+                    
+                    PeriodSpendingCard(
+                        spentAmount: viewModel.periodSpentAmount,
+                        progress: viewModel.periodSpendingProgress,
+                        availablePercentage: viewModel.periodAvailablePercentage,
+                        pillColor: viewModel.periodPillColor
+                    )
+                    
+                    Grid(horizontalSpacing: 12, verticalSpacing: 0) {
+                        GridRow(alignment: .top) {
+                            SummaryCardView(period: viewModel.activePeriod)
+                                .gridCellColumns(2)
+                            DaysRemainingGaugeCard(period: viewModel.activePeriod)
+                        }
+                    }
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Cómo quieres dividir el presupuesto?")
+                        Text("How do you want to split your budget?")
                             .font(.subheadline)
                             .foregroundStyle(Color.minus.textSecondary)
                             .padding(.horizontal, 4)
 
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        Picker("Split budget", selection: Binding(
+                            get: { viewModel.selectedSplitMode },
+                            set: { viewModel.updateSplitMode($0) }
+                        )) {
                             ForEach(BudgetPeriod.allCases, id: \.self) { period in
-                                PeriodCard(
-                                    title: period.displayTitle,
-                                    amount: splitAmount(for: period),
-                                    isSelected: viewModel.selectedSplitMode == period
-                                ) {
-                                    viewModel.updateSplitMode(period)
-                                }
+                                Text(period.displayTitle).tag(period)
                             }
                         }
-                    }
+                        .pickerStyle(.segmented)
 
-                    Button(role: .destructive) {
-                        showEndPeriodAlert = true
-                    } label: {
-                        Text("Finalizar periodo de ahorro antes de tiempo")
-                            .font(.system(size: 16, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.minus.destructive.opacity(0.15))
-                            .foregroundStyle(Color.minus.destructive)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        PeriodCard(
+                            title: viewModel.selectedSplitMode.displayTitle,
+                            amount: splitAmount(for: viewModel.selectedSplitMode),
+                            isSelected: true
+                        ) {}
+                        .allowsHitTesting(false)
+                    }
+                    
+                    Divider()
+
+                    VStack(spacing: 12) {
+                        if let bannerText = carryOverBannerText {
+                            CarryOverInfoBanner(text: bannerText)
+                        }
+
+                        Button(role: .destructive) {
+                            showEndPeriodAlert = true
+                        } label: {
+                            Text("End savings period early")
+                                .font(.system(size: 16, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color.minus.destructive.opacity(0.15))
+                                .foregroundStyle(Color.minus.destructive)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
                     }
                 }
                 .padding(20)
             }
             .background(Color.minus.background.ignoresSafeArea())
-            .navigationTitle("Detalles del periodo")
+            .navigationTitle("Period Details")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await viewModel.loadSpending()
+                await viewModel.refreshCarryOverPreview()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: { dismiss() }) {
@@ -86,34 +117,46 @@ struct BudgetDetailsSheet: View {
             }
             // generate "alert dialog" for ending early the period
             .presentationSizing(.fitted)
-            .confirmationDialog("Terminar periodo actual?", isPresented: $showEndPeriodAlert, titleVisibility: .visible) {
-                Button("Finalizar y crear uno nuevo", role: .destructive) {
-                    // TODO: call FinishPeriodEarlyUseCase or delegate it into the viewmodel to not tight UI with business logic
+            .confirmationDialog("End current period?", isPresented: $showEndPeriodAlert, titleVisibility: .visible) {
+                Button("End and start a new one", role: .destructive) {
+                    Task {
+                        await viewModel.finishPeriodEarly()
+                    }
                     dismiss()
                 }
 
-                Button("Cancelar", role: .cancel) { }
+                Button("Cancel", role: .cancel) { }
             } message: {
-                Text("Esta acción cerrará el historial de este periodo y se te pedirá información sobre el nuevo periodo.")
+                Text("This will close out this period's history and ask you for the new period's details.")
             }
+        }
+    }
+
+    private var carryOverBannerText: String? {
+        guard let active = viewModel.activePeriod,
+              let preview = viewModel.carryOverPreview else { return nil }
+
+        let symbol = Currency.find(byCode: active.currency)?.symbol ?? "$"
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        let amountText = "\(symbol)\(formatter.string(from: preview.amount as NSDecimalNumber) ?? "0")"
+
+        switch preview.strategy {
+        case .SPLIT_EQUALLY:
+            return "You have \(amountText) left unspent. When this period ends, it will be spread across every day of your next budget."
+        case .ADD_TO_FIRST_DAY:
+            return "You have \(amountText) left unspent. When this period ends, it will be added to the first day of your next budget."
+        case .ASK_ALWAYS:
+            return "You have \(amountText) left unspent. You'll be asked whether to add or discard it when you create your next budget."
         }
     }
 
     private func splitAmount(for period: BudgetPeriod) -> String {
         guard let active = viewModel.activePeriod else { return "$0" }
         let symbol = Currency.find(byCode: active.currency)?.symbol ?? "$"
-        let totalDays = max(1, active.daysInPeriod)
-        let daily = active.totalBudget / Decimal(totalDays)
-
-        let multiplier: Int
-        switch period {
-        case .daily: multiplier = 1
-        case .weekly: multiplier = 7
-        case .biweekly: multiplier = 14
-        case .monthly: multiplier = totalDays
-        }
-
-        let amount = daily * Decimal(min(multiplier, totalDays))
+        let amount = active.splitAmount(for: period)
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 0
@@ -125,10 +168,10 @@ struct BudgetDetailsSheet: View {
 extension BudgetPeriod {
     var displayTitle: String {
         switch self {
-        case .daily: return "A diario"
-        case .weekly: return "Semanal"
-        case .biweekly: return "Quincenal"
-        case .monthly: return "Mensual"
+        case .daily: return String(localized: "Daily")
+        case .weekly: return String(localized: "Weekly")
+        case .biweekly: return String(localized: "Biweekly")
+        case .monthly: return String(localized: "Monthly")
         }
     }
 }

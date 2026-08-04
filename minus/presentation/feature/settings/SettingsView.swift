@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(ThemeManager.self) private var themeManager
     @AppStorage("showPastPeriodExpenses") private var showPastPeriodExpenses = true
+    @AppStorage("useCreditCardPayments") private var useCreditCardPayments = false
 
     var body: some View {
         List {
@@ -44,6 +45,15 @@ struct SettingsView: View {
                     .tint(Color.minus.primaryAction)
 
                 Text("Muestra u oculta los gastos de periodos de presupuesto pasados en el historial.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Tarjeta de crédito") {
+                Toggle("Uso de pagos con tarjeta de crédito", isOn: $useCreditCardPayments)
+                    .tint(Color.minus.primaryAction)
+
+                Text("Próximamente: ajusta tus periodos de gasto según el ciclo de corte de tu tarjeta de crédito.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

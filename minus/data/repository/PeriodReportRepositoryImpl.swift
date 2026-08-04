@@ -25,9 +25,10 @@ class PeriodReportRepositoryImpl: PeriodRepository {
             currency: period.currency,
             remainingStrategy: period.remainingStrategy.rawValue,
             periodType: period.periodType.rawValue,
-            daysInPeriod: period.daysInPeriod
+            daysInPeriod: period.daysInPeriod,
+            carryOverAmount: NSDecimalNumber(decimal: period.carryOverAmount).doubleValue
         )
-        
+
         context.insert(entity)
         try context.save()
     }
@@ -44,15 +45,13 @@ class PeriodReportRepositoryImpl: PeriodRepository {
     }
     
     func getActivePeriod() async throws -> PeriodKey? {
-        let predicate = #Predicate<PeriodEntity> { $0.endDate == nil }
-        
-        var descriptor = FetchDescriptor<PeriodEntity>(
-            predicate: predicate,
+        let descriptor = FetchDescriptor<PeriodEntity>(
             sortBy: [SortDescriptor(\.startDate, order: .reverse)]
         )
-        descriptor.fetchLimit = 1
-        
-        if let entity = try context.fetch(descriptor).first {
+        let entities = try context.fetch(descriptor)
+        let now = Date()
+
+        if let entity = entities.first(where: { $0.endDate == nil || $0.endDate! > now }) {
             return mapToDomain(entity)
         }
         return nil
@@ -88,7 +87,8 @@ class PeriodReportRepositoryImpl: PeriodRepository {
             currency: entity.currency,
             remainingStrategy: RemainingBudgetStrategy(rawValue: entity.remainingStrategy) ?? .ASK_ALWAYS,
             periodType: BudgetPeriod(rawValue: entity.periodType) ?? .monthly,
-            daysInPeriod: entity.daysInPeriod
+            daysInPeriod: entity.daysInPeriod,
+            carryOverAmount: Decimal(entity.carryOverAmount)
         )
     }
 }

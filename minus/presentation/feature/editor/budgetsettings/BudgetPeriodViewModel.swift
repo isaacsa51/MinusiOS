@@ -18,16 +18,25 @@ class BudgetPeriodViewModel {
     var formCurrency: Currency = Currency.all.first { $0.code == "MXN" } ?? Currency.all[0]
     var formRemainingStrategy: RemainingBudgetStrategy = .SPLIT_EQUALLY
 
+    var showCarryOverPrompt = false
+    private(set) var pendingCarryOverAmount: Decimal = 0
+    private var pendingSettings: BudgetSettings?
+
+    private(set) var carryOverPreview: PendingCarryOver?
+
     var selectedSplitMode: BudgetPeriod = .daily
     private(set) var spentInSplit: Decimal = 0
+    private(set) var spentInPeriod: Decimal = 0
 
     private let getCurrentPeriodUseCase: GetCurrentPeriodIdIUseCase
     private let createBudgetPeriodUseCase: CreateBudgetPeriodUseCase
+    private let finishPeriodEarlyUseCase: FinishPeriodEarlyUseCase
     private let transactionRepository: TransactionRepository
 
     init(periodRepo: PeriodRepository, transactionRepo: TransactionRepository) {
         self.getCurrentPeriodUseCase = GetCurrentPeriodIdIUseCase(repository: periodRepo)
-        self.createBudgetPeriodUseCase = CreateBudgetPeriodUseCase(repository: periodRepo)
+        self.createBudgetPeriodUseCase = CreateBudgetPeriodUseCase(repository: periodRepo, transactionRepository: transactionRepo)
+        self.finishPeriodEarlyUseCase = FinishPeriodEarlyUseCase(repository: periodRepo)
         self.transactionRepository = transactionRepo
         if let saved = UserDefaults.standard.string(forKey: "selectedSplitMode"),
            let mode = BudgetPeriod(rawValue: saved) {
@@ -37,32 +46,20 @@ class BudgetPeriodViewModel {
 
 
     var pillTitle: String {
-        guard activePeriod != nil else { return "Sin presupuesto" }
-        if isExceeded { return "Presupuesto excedido" }
+        guard activePeriod != nil else { return String(localized: "No budget") }
+        if isExceeded { return String(localized: "Budget exceeded") }
         switch selectedSplitMode {
-        case .daily: return "Para hoy"
-        case .weekly: return "Esta semana"
-        case .biweekly: return "Esta quincena"
-        case .monthly: return "Este mes"
+        case .daily: return String(localized: "For today")
+        case .weekly: return String(localized: "This week")
+        case .biweekly: return String(localized: "This biweekly period")
+        case .monthly: return String(localized: "This month")
         }
     }
 
     var splitBudget: Decimal {
         guard let period = activePeriod else { return 0 }
-        let totalDays = max(1, period.daysInPeriod)
-        let daily = period.totalBudget / Decimal(totalDays)
-
-        let multiplier: Int
-        switch selectedSplitMode {
-        case .daily: multiplier = 1
-        case .weekly: multiplier = 7
-        case .biweekly: multiplier = 14
-        case .monthly: multiplier = totalDays
-        }
-
-        let result = daily * Decimal(min(multiplier, totalDays))
         var rounded = Decimal()
-        var mutable = result
+        var mutable = period.splitAmount(for: selectedSplitMode)
         NSDecimalRound(&rounded, &mutable, 2, .plain)
         return rounded
     }
@@ -89,22 +86,32 @@ class BudgetPeriodViewModel {
 
     var pillColor: Color {
         guard activePeriod != nil else { return Color.minus.textSecondary }
-        let progress = min(spendingProgress, 1.0)
-        if progress < 0.5 {
-            let t = progress / 0.5
-            return Color(
-                red: t * 0.95,
-                green: 0.75 + (1.0 - t) * 0.11,
-                blue: 0.39 * (1.0 - t)
-            )
-        } else {
-            let t = (progress - 0.5) / 0.5
-            return Color(
-                red: 0.95 + t * 0.05,
-                green: 0.75 * (1.0 - t * 0.7),
-                blue: 0.0
-            )
-        }
+        return Color.spendingHeat(spendingProgress)
+    }
+
+    var periodSpendingProgress: Double {
+        guard let period = activePeriod, period.totalBudget > 0 else { return 0 }
+        return NSDecimalNumber(decimal: spentInPeriod / period.totalBudget).doubleValue
+    }
+
+    var periodAvailablePercentage: Int {
+        let available = 1 - min(max(periodSpendingProgress, 0), 1)
+        return Int((available * 100).rounded())
+    }
+
+    var periodSpentAmount: String {
+        guard let period = activePeriod else { return "$0.00" }
+        let symbol = Currency.find(byCode: period.currency)?.symbol ?? "$"
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return "\(symbol)\(formatter.string(from: spentInPeriod as NSDecimalNumber) ?? "0.00")"
+    }
+
+    var periodPillColor: Color {
+        guard activePeriod != nil else { return Color.minus.textSecondary }
+        return Color.spendingHeat(periodSpendingProgress)
     }
 
     func checkActivePeriod() async {
@@ -116,10 +123,15 @@ class BudgetPeriodViewModel {
             } else {
                 await loadSpending()
             }
+            await refreshCarryOverPreview()
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    func refreshCarryOverPreview() async {
+        carryOverPreview = try? await createBudgetPeriodUseCase.previewCarryOver()
     }
 
     func loadSpending() async {
@@ -150,6 +162,11 @@ class BudgetPeriodViewModel {
             spentInSplit = periodTransactions.reduce(Decimal.zero) { total, tx in
                 tx.isCredit ? total - tx.amount : total + tx.amount
             }
+
+            let allPeriodTransactions = try await transactionRepository.getTransactions(forPeriod: period.id)
+            spentInPeriod = allPeriodTransactions.reduce(Decimal.zero) { total, tx in
+                tx.isCredit ? total - tx.amount : total + tx.amount
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -164,7 +181,7 @@ class BudgetPeriodViewModel {
     func applyNewBudget() async {
         let rawAmount = CurrencyInputFormatter.stripFormatting(formBudgetAmount)
         guard let amount = Decimal(string: rawAmount), amount > 0 else {
-            errorMessage = "Ingresa un monto válido"
+            errorMessage = String(localized: "Enter a valid amount")
             return
         }
 
@@ -181,8 +198,41 @@ class BudgetPeriodViewModel {
         )
 
         do {
+            if let pending = try await createBudgetPeriodUseCase.previewCarryOver(), pending.strategy == .ASK_ALWAYS {
+                pendingSettings = settings
+                pendingCarryOverAmount = pending.amount
+                showCarryOverPrompt = true
+                return
+            }
             activePeriod = try await createBudgetPeriodUseCase.execute(settings: settings)
             showNewBudgetSheet = false
+            await refreshCarryOverPreview()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func confirmCarryOver(include: Bool) async {
+        guard let settings = pendingSettings else { return }
+        showCarryOverPrompt = false
+        pendingSettings = nil
+
+        do {
+            activePeriod = try await createBudgetPeriodUseCase.execute(settings: settings, carryOverDecision: include)
+            showNewBudgetSheet = false
+            await refreshCarryOverPreview()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func finishPeriodEarly() async {
+        do {
+            try await finishPeriodEarlyUseCase.execute()
+            activePeriod = nil
+            resetForm()
+            showNewBudgetSheet = true
+            await refreshCarryOverPreview()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -204,12 +254,7 @@ class BudgetPeriodViewModel {
         formatter.maximumFractionDigits = 2
         formBudgetAmount = formatter.string(from: period.totalBudget as NSDecimalNumber) ?? ""
         formStartDate = period.startDate
-        formEndDate = period.endDate ?? BudgetSettings(
-            totalBudget: period.totalBudget,
-            period: period.periodType,
-            startDate: period.startDate,
-            daysInPeriod: period.daysInPeriod
-        ).getPeriodEndDate()
+        formEndDate = period.effectiveEndDate
         formCurrency = Currency.find(byCode: period.currency) ?? Currency.all[0]
         formRemainingStrategy = period.remainingStrategy
     }

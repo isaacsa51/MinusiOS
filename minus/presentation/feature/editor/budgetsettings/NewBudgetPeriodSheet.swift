@@ -18,6 +18,10 @@ struct NewBudgetPeriodSheet: View {
                         .foregroundStyle(Color.minus.textPrimary)
                         .padding(.top, 16)
 
+                    if let bannerText = carryOverBannerText {
+                        CarryOverInfoBanner(text: bannerText)
+                    }
+
                     TextField("0.00", text: $viewModel.formBudgetAmount)
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .keyboardType(.decimalPad)
@@ -65,6 +69,9 @@ struct NewBudgetPeriodSheet: View {
         .background(Color.minus.background.ignoresSafeArea())
         .presentationSizing(.fitted)
         .interactiveDismissDisabled(viewModel.activePeriod == nil)
+        .task {
+            await viewModel.refreshCarryOverPreview()
+        }
         .alert("Error", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
@@ -72,6 +79,47 @@ struct NewBudgetPeriodSheet: View {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        .confirmationDialog(
+            "Carry over remaining balance?",
+            isPresented: $viewModel.showCarryOverPrompt,
+            titleVisibility: .visible
+        ) {
+            Button("Yes, add \(carryOverAmountText)") {
+                Task { await viewModel.confirmCarryOver(include: true) }
+            }
+            Button("No, discard it") {
+                Task { await viewModel.confirmCarryOver(include: false) }
+            }
+        } message: {
+            Text("You have \(carryOverAmountText) left from your last period.")
+        }
+    }
+
+    private var carryOverAmountText: String {
+        formattedAmount(viewModel.pendingCarryOverAmount)
+    }
+
+    private func formattedAmount(_ amount: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        let formatted = formatter.string(from: amount as NSDecimalNumber) ?? "0"
+        return "\(viewModel.formCurrency.symbol)\(formatted)"
+    }
+
+    private var carryOverBannerText: String? {
+        guard let preview = viewModel.carryOverPreview else { return nil }
+        let amountText = formattedAmount(preview.amount)
+
+        switch preview.strategy {
+        case .SPLIT_EQUALLY:
+            return "\(amountText) left over from your last period will be spread across every day of this one."
+        case .ADD_TO_FIRST_DAY:
+            return "\(amountText) left over from your last period will be added to day one of this one."
+        case .ASK_ALWAYS:
+            return "You have \(amountText) left over from your last period. You'll be asked whether to add or discard it."
         }
     }
 
@@ -158,9 +206,9 @@ struct NewBudgetPeriodSheet: View {
 extension RemainingBudgetStrategy {
     var displayName: String {
         switch self {
-        case .SPLIT_EQUALLY: return "Spread across all days"
-        case .ADD_TO_FIRST_DAY: return "Add to first day"
-        case .ASK_ALWAYS: return "Ask always"
+        case .SPLIT_EQUALLY: return String(localized: "Spread across all days")
+        case .ADD_TO_FIRST_DAY: return String(localized: "Add to first day")
+        case .ASK_ALWAYS: return String(localized: "Ask always")
         }
     }
 }

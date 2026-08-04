@@ -19,12 +19,22 @@ struct HistoryView: View {
     private var entities: [TransactionEntity]
     
     @AppStorage("showPastPeriodExpenses") private var showPastPeriodExpensesEnabled = true
-    @State private var expandedTransactionId: UUID?
+    @State private var expandedRowId: String?
     @State private var showPastPeriods = false
+    @State private var collapsedDates: Set<String> = []
     
     private var currentPeriodEntities: [TransactionEntity] {
         guard let periodId = activePeriodId else { return entities }
         return entities.filter { $0.periodId == periodId }
+    }
+    
+    private var recurringInPeriod: [TransactionEntity] {
+        currentPeriodEntities.filter { $0.recurrentFrequency != nil }
+    }
+    
+    private var recurringOutsidePeriod: [TransactionEntity] {
+        guard let periodId = activePeriodId else { return [] }
+        return entities.filter { $0.periodId != periodId && $0.recurrentFrequency != nil }
     }
     
     private var pastPeriodEntities: [TransactionEntity] {
@@ -74,17 +84,27 @@ struct HistoryView: View {
                     .padding(.top, 40)
             } else {
                 LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                    transactionSections(for: groupTransactions(currentPeriodEntities))
-                    
+                    if !recurringInPeriod.isEmpty {
+                        RecurringSectionHeader(title: "Recurring payments")
+                        recurringList(for: recurringInPeriod, sectionId: "recurringInPeriod")
+                    }
+
+                    transactionSections(for: groupTransactions(currentPeriodEntities), sectionId: "current")
+
+                    if !recurringOutsidePeriod.isEmpty {
+                        RecurringSectionHeader(title: "Recurring outside period")
+                        recurringList(for: recurringOutsidePeriod, sectionId: "recurringOutsidePeriod")
+                    }
+
                     if showPastPeriodExpensesEnabled && !pastPeriodEntities.isEmpty {
                         PastPeriodDivider(isExpanded: showPastPeriods) {
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 showPastPeriods.toggle()
                             }
                         }
-                        
+
                         if showPastPeriods {
-                            transactionSections(for: groupTransactions(pastPeriodEntities))
+                            transactionSections(for: groupTransactions(pastPeriodEntities), sectionId: "past")
                         }
                     }
                 }
@@ -94,71 +114,130 @@ struct HistoryView: View {
     }
     
     @ViewBuilder
-    private func transactionSections(for groups: [(date: String, transactions: [TransactionEntity], total: Decimal)]) -> some View {
+    private func transactionSections(for groups: [(date: String, transactions: [TransactionEntity], total: Decimal)], sectionId: String) -> some View {
         ForEach(groups, id: \.date) { group in
+            let isCollapsed = collapsedDates.contains(group.date)
+
             Section {
-                VStack(spacing: 0) {
-                    ForEach(group.transactions) { tx in
-                        TransactionRow(
-                            categoryName: tx.categoryName ?? (tx.isCredit ? "Income" : "Expense"),
-                            time: Self.timeFormatter.string(from: tx.createdAt),
-                            amount: formatAmount(Decimal(tx.amount), isCredit: tx.isCredit),
-                            isCredit: tx.isCredit,
-                            isExpanded: expandedTransactionId == tx.id,
-                            fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
-                            onTap: {
-                                withAnimation(.easeInOut(duration: 0.25)) {
-                                    if expandedTransactionId == tx.id {
-                                        expandedTransactionId = nil
-                                    } else {
-                                        expandedTransactionId = tx.id
+                if !isCollapsed {
+                    VStack(spacing: 0) {
+                        ForEach(group.transactions) { tx in
+                            let rowId = "\(sectionId)-\(tx.id)"
+                            TransactionRow(
+                                categoryName: tx.categoryName ?? (tx.isCredit ? "Income" : "Expense"),
+                                time: Self.timeFormatter.string(from: tx.createdAt),
+                                amount: formatAmount(Decimal(tx.amount), isCredit: tx.isCredit),
+                                isCredit: tx.isCredit,
+                                isExpanded: expandedRowId == rowId,
+                                fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
+                                onTap: {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        if expandedRowId == rowId {
+                                            expandedRowId = nil
+                                        } else {
+                                            expandedRowId = rowId
+                                        }
                                     }
+                                },
+                                onEdit: {
+                                    onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isCredit)
+                                },
+                                onDelete: {
+                                    deleteTransaction(id: tx.id)
                                 }
-                            },
-                            onEdit: {
-                                onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isCredit)
-                            },
-                            onDelete: {
-                                deleteTransaction(id: tx.id)
+                            )
+                            
+                            if tx.id != group.transactions.last?.id {
+                                Divider()
+                                    .padding(.leading, 16)
                             }
-                        )
-                        
-                        if tx.id != group.transactions.last?.id {
-                            Divider()
-                                .padding(.leading, 16)
                         }
                     }
+                    .background(Color.minus.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 16)
+                    
+                    HStack {
+                        Spacer()
+                        Text("Total: \(formatAmount(group.total))")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color.minus.textSecondary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    .padding(.bottom, 12)
                 }
-                .background(Color.minus.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .padding(.horizontal, 16)
-                
-                HStack {
-                    Spacer()
-                    Text("Total: \(formatAmount(group.total))")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.minus.textSecondary)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
-                .padding(.bottom, 12)
             } header: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.minus.textSecondary)
-                    Text(group.date)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.minus.textSecondary)
-                    Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        if isCollapsed {
+                            collapsedDates.remove(group.date)
+                        } else {
+                            collapsedDates.insert(group.date)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.minus.textSecondary)
+                            .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+                        Text(group.date)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.minus.textSecondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .buttonStyle(.plain)
                 .background(Color.minus.background)
             }
         }
     }
     
+    @ViewBuilder
+    private func recurringList(for items: [TransactionEntity], sectionId: String) -> some View {
+        VStack(spacing: 0) {
+            ForEach(items) { tx in
+                let rowId = "\(sectionId)-\(tx.id)"
+                TransactionRow(
+                    categoryName: tx.categoryName ?? (tx.isCredit ? "Income" : "Expense"),
+                    time: Self.timeFormatter.string(from: tx.createdAt),
+                    amount: formatAmount(Decimal(tx.amount), isCredit: tx.isCredit),
+                    isCredit: tx.isCredit,
+                    isExpanded: expandedRowId == rowId,
+                    fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
+                    onTap: {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            if expandedRowId == rowId {
+                                expandedRowId = nil
+                            } else {
+                                expandedRowId = rowId
+                            }
+                        }
+                    },
+                    onEdit: {
+                        onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isCredit)
+                    },
+                    onDelete: {
+                        deleteTransaction(id: tx.id)
+                    }
+                )
+
+                if tx.id != items.last?.id {
+                    Divider()
+                        .padding(.leading, 16)
+                }
+            }
+        }
+        .background(Color.minus.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
     private func formatAmount(_ value: Decimal, isCredit: Bool = false) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -171,7 +250,7 @@ struct HistoryView: View {
     private func deleteTransaction(id: UUID) {
         guard let repo = transactionRepository else { return }
         withAnimation(.easeInOut(duration: 0.25)) {
-            expandedTransactionId = nil
+            expandedRowId = nil
         }
         Task {
             try? await repo.delete(transactionId: id)
@@ -277,6 +356,24 @@ private struct DetailInfoRow: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.minus.textPrimary)
         }
+    }
+}
+
+private struct RecurringSectionHeader: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "repeat")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.minus.primaryAction)
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.minus.primaryAction)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 }
 

@@ -15,26 +15,10 @@ class FinishPeriodEarlyUseCase {
     }
     
     func execute() async throws {
-       let now = Date()
-        
         guard let currentPeriod = try await repository.getActivePeriod() else {
             throw TransactionError.transactionNotFound
         }
-        
-        try await repository.closePeriod(id: currentPeriod.id, finalEndDate: now)
-        
-        let newPeriod = PeriodKey(
-            id: UUID(),
-            startDate: now,
-            endDate: nil,
-            mappingNode: currentPeriod.mappingNode,
-            totalBudget: currentPeriod.totalBudget,
-            currency: currentPeriod.currency,
-            remainingStrategy: currentPeriod.remainingStrategy,
-            periodType: currentPeriod.periodType,
-            daysInPeriod: currentPeriod.daysInPeriod
-        )
-        
-        try await repository.save(period: newPeriod)
+
+        try await repository.closePeriod(id: currentPeriod.id, finalEndDate: Date())
     }
 }
