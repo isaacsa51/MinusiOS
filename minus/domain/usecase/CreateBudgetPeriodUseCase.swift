@@ -32,6 +32,9 @@ class CreateBudgetPeriodUseCase {
         if let previous, previous.endDate == nil || previous.endDate! > Date() {
             try await repository.closePeriod(id: previous.id, finalEndDate: Date())
         }
+        if let previous {
+            PeriodEndNotificationService.cancel(periodId: previous.id)
+        }
 
         var carryOver: Decimal = 0
         if let previous {
@@ -62,6 +65,11 @@ class CreateBudgetPeriodUseCase {
         )
 
         try await repository.save(period: newPeriod)
+
+        if let endDate = newPeriod.endDate {
+            PeriodEndNotificationService.schedule(periodId: newPeriod.id, endDate: endDate)
+        }
+
         return newPeriod
     }
 

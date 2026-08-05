@@ -20,5 +20,6 @@ class FinishPeriodEarlyUseCase {
         }
 
         try await repository.closePeriod(id: currentPeriod.id, finalEndDate: Date())
+        PeriodEndNotificationService.cancel(periodId: currentPeriod.id)
     }
 }

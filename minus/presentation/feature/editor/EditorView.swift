@@ -194,6 +194,9 @@ struct EditorView: View {
             }
             await budgetVM?.checkActivePeriod()
             await viewModel?.loadSavedCategories()
+            if let txRepo {
+                await RefreshRecurringNotificationsUseCase(transactionRepository: txRepo).execute()
+            }
         }
         .sheet(isPresented: $isShowingBudgetDetailsSheet) {
             if let vm = budgetVM {

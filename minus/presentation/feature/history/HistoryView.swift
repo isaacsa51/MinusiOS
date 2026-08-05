@@ -252,6 +252,7 @@ struct HistoryView: View {
         withAnimation(.easeInOut(duration: 0.25)) {
             expandedRowId = nil
         }
+        RecurringNotificationService.cancel(transactionId: id)
         Task {
             try? await repo.delete(transactionId: id)
         }

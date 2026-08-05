@@ -29,6 +29,8 @@ struct minusApp: App {
         }
         txRepo = TransactionRepositoryImpl(context: container.mainContext)
         periodRepo = PeriodReportRepositoryImpl(context: container.mainContext)
+
+        RecurringNotificationService.requestAuthorizationIfNeeded()
     }
 
     var body: some Scene {
