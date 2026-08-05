@@ -64,12 +64,21 @@ class GetPeriodAnalyticsUseCase {
     private static func categoryBreakdown(from expenses: [Transaction], totalSpent: Decimal) -> [CategorySpending] {
         guard totalSpent > 0 else { return [] }
 
-        let grouped = Dictionary(grouping: expenses) { $0.categoryId }
-        let entries = grouped.map { categoryId, txs -> CategorySpending in
+        // Group by name, not `categoryId` — uncategorized transactions don't
+        // share a stable id (each can carry its own throwaway UUID), so
+        // grouping by id splits them into one row per transaction instead of
+        // a single "Uncategorized" bucket. A blank/whitespace name counts as
+        // uncategorized too, not just nil.
+        let grouped = Dictionary(grouping: expenses) { tx -> String? in
+            guard let name = tx.categoryName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !name.isEmpty else { return nil }
+            return name
+        }
+        let entries = grouped.map { categoryName, txs -> CategorySpending in
             let amount = txs.reduce(Decimal.zero) { $0 + $1.amount }
-            let name = txs.first?.categoryName ?? String(localized: "Uncategorized")
+            let name = categoryName ?? String(localized: "Uncategorized")
             return CategorySpending(
-                id: categoryId,
+                id: UUID(),
                 name: name,
                 amount: amount,
                 percentage: NSDecimalNumber(decimal: amount / totalSpent).doubleValue

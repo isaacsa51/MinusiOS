@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A54CB2E03022AA86003C10F6 /* SwiftThemeKit in Frameworks */ = {isa = PBXBuildFile; productRef = A54CB2DF3022AA86003C10F6 /* SwiftThemeKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		A5C980722FAD7C5D00B015FC /* minus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = minus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A54CB2E03022AA86003C10F6 /* SwiftThemeKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = minus;
 			packageProductDependencies = (
+				A54CB2DF3022AA86003C10F6 /* SwiftThemeKit */,
 			);
 			productName = minus;
 			productReference = A5C980722FAD7C5D00B015FC /* minus.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = A5C980692FAD7C5D00B015FC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A54CB2DE3022AA86003C10F6 /* XCRemoteSwiftPackageReference "swift-theme-kit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A5C980732FAD7C5D00B015FC /* Products */;
 			projectDirPath = "";
@@ -328,6 +337,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A54CB2DE3022AA86003C10F6 /* XCRemoteSwiftPackageReference "swift-theme-kit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Charlyk/swift-theme-kit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A54CB2DF3022AA86003C10F6 /* SwiftThemeKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A54CB2DE3022AA86003C10F6 /* XCRemoteSwiftPackageReference "swift-theme-kit" */;
+			productName = SwiftThemeKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A5C9806A2FAD7C5D00B015FC /* Project object */;
 }

@@ -4,8 +4,11 @@
 //
 
 import SwiftUI
+import SwiftThemeKit
 
 struct AnalyticsStatTile: View {
+    @Environment(\.appTheme) private var theme
+
     let title: String
     let value: String
     var subtitle: String? = nil
@@ -17,7 +20,7 @@ struct AnalyticsStatTile: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: theme.radii.xl, style: .continuous)
                 .fill(tint.opacity(0.14))
 
             if !trendValues.isEmpty, highlightIndex != nil {
@@ -31,36 +34,34 @@ struct AnalyticsStatTile: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.displaySmall)
                     .foregroundStyle(Color.minus.textPrimary)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
 
                 Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.labelMedium)
                     .foregroundStyle(Color.minus.textSecondary)
 
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption2)
+                        .font(.labelSmall)
                         .foregroundStyle(Color.minus.textSecondary)
                         .lineLimit(1)
-                        .padding(.top, 4)
+                        .padding(.top, .xs)
                 }
 
                 if let categoryLabel {
                     Label(categoryLabel, systemImage: "tag.fill")
-                        .font(.caption2)
-                        .fontWeight(.medium)
+                        .font(.labelSmall)
                         .foregroundStyle(Color.minus.textSecondary)
                         .lineLimit(1)
                 }
             }
-            .padding(16)
+            .padding(.lg)
         }
         .frame(minHeight: 140)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipRadius(.xl, style: .continuous)
     }
 }
 

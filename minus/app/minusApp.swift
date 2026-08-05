@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import SwiftThemeKit
 
 @main
 struct minusApp: App {
@@ -33,26 +34,31 @@ struct minusApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack(path: $router.path) {
-                // initial screen is numpad
-                EditorView()
-                    .navigationDestination(for: Destinations.self) { destination in
-                        // here the Router checks what to render
-                        switch destination {
-                        case .editor:
-                            EditorView()
-                        case .settings:
-                            SettingsView()
-                        case .history:
-                            Text("Transactions History screen...")
-                        case .analytics:
-                            AnalyticsView()
+                ThemeProvider(light: AppTheme.light, dark: AppTheme.dark) {
+                    // initial screen is numpad
+                    EditorView()
+                        .navigationDestination(for: Destinations.self) { destination in
+                            // here the Router checks what to render
+                            switch destination {
+                            case .editor:
+                                EditorView()
+                            case .settings:
+                                SettingsView()
+                            case .history:
+                                Text("Transactions History screen...")
+                            case .analytics:
+                                AnalyticsView()
+                            }
                         }
-                    }
-                    .environment(router)
+                        .environment(router)
+                        // Applied here, inside ThemeProvider's content, so it wins
+                        // over ThemeProvider's own internal `.tint(theme.colors.primary)` —
+                        // a `.tint()` set closer to the leaves overrides one set further out.
+                        .tint(Color.minus.primaryAction)
+                }
             }
             .ignoresSafeArea(.keyboard)
             .preferredColorScheme(themeManager.colorScheme)
-            .tint(Color.minus.primaryAction)
             .environment(themeManager)
             .environment(\.transactionRepository, txRepo)
             .environment(\.periodRepository, periodRepo)

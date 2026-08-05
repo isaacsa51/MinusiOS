@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftThemeKit
 
 struct SummaryCardView: View {
     let period: PeriodKey?
@@ -48,7 +49,7 @@ struct SummaryCardView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(formattedBudget)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(.displayLarge)
                     .minimumScaleFactor(0.8)
                     .lineLimit(1)
                     .foregroundStyle(Color.minus.textPrimary)
@@ -65,9 +66,9 @@ struct SummaryCardView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
+        .padding(.xl)
         .background(Color.minus.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipRadius(.xl, style: .continuous)
         .shadow(color: Color.primary.opacity(0.12), radius: 10, x: 0, y: 5)
     }
 }
@@ -79,6 +80,8 @@ struct SummaryCardView: View {
 }
 
 struct PeriodCard: View {
+    @Environment(\.appTheme) private var theme
+
     let title: String
     let amount: String
     let isSelected: Bool
@@ -88,23 +91,21 @@ struct PeriodCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.caption)
-                    .fontWeight(.bold)
+                    .font(.labelSmall, weight: .bold)
                     .textCase(.uppercase)
                     .foregroundStyle(isSelected ? Color.minus.textPrimary.opacity(0.8) : Color.minus.textSecondary)
 
                 Text(amount)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(isSelected ? Color.minus.textPrimary : Color.minus.textPrimary)
+                    .font(.headlineMedium)
+                    .foregroundStyle(Color.minus.textPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 16)
-            .padding(.horizontal, 16)
+            .padding(.vertical, .lg)
+            .padding(.horizontal, .lg)
             .background(isSelected ? Color.minus.primaryAction.opacity(0.8) : Color.minus.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipRadius(.lg, style: .continuous)
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: theme.radii.lg, style: .continuous)
                     .stroke(isSelected ? Color.clear : Color.minus.divider, lineWidth: 1)
             )
         }
