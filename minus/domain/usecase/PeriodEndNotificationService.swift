@@ -27,6 +27,22 @@ class PeriodEndNotificationService {
         }
     }
 
+    static func sendTestNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Budget period ended")
+        content.body = String(localized: "Your current budget period has ended. Review your spending and start a new one.")
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "test-period-end-\(UUID().uuidString)",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
+        )
+        Task {
+            try? await UNUserNotificationCenter.current().add(request)
+        }
+    }
+
     static func cancel(periodId: UUID) {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier(periodId: periodId)])
     }

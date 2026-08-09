@@ -20,6 +20,7 @@ class PeriodEntity {
     var periodType: String
     var daysInPeriod: Int
     var carryOverAmount: Double = 0
+    var externalId: String?
 
     init(
         id: UUID,
@@ -31,7 +32,8 @@ class PeriodEntity {
         remainingStrategy: String = "ASK_ALWAYS",
         periodType: String = "monthly",
         daysInPeriod: Int = 30,
-        carryOverAmount: Double = 0
+        carryOverAmount: Double = 0,
+        externalId: String? = nil
     ) {
         self.id = id
         self.startDate = startDate
@@ -43,5 +45,6 @@ class PeriodEntity {
         self.periodType = periodType
         self.daysInPeriod = daysInPeriod
         self.carryOverAmount = carryOverAmount
+        self.externalId = externalId
     }
 }

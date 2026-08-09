@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import SwiftThemeKit
+import UserNotifications
 
 @main
 struct minusApp: App {
@@ -19,6 +20,8 @@ struct minusApp: App {
     let container: ModelContainer
     private let txRepo: TransactionRepositoryImpl
     private let periodRepo: PeriodReportRepositoryImpl
+    private let splitModePreferenceRepo: UserDefaultsSplitModePreferenceRepository
+    private let creditCardPreferenceRepo: UserDefaultsCreditCardPreferenceRepository
 
     init() {
         do {
@@ -29,7 +32,10 @@ struct minusApp: App {
         }
         txRepo = TransactionRepositoryImpl(context: container.mainContext)
         periodRepo = PeriodReportRepositoryImpl(context: container.mainContext)
+        splitModePreferenceRepo = UserDefaultsSplitModePreferenceRepository()
+        creditCardPreferenceRepo = UserDefaultsCreditCardPreferenceRepository()
 
+        UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         RecurringNotificationService.requestAuthorizationIfNeeded()
     }
 
@@ -48,22 +54,23 @@ struct minusApp: App {
                                 SettingsView()
                             case .history:
                                 Text("Transactions History screen...")
-                            case .analytics:
-                                AnalyticsView()
+                            case .analytics(let periodId):
+                                AnalyticsView(periodId: periodId)
+                            case .pastPeriods:
+                                PastPeriodsView()
                             }
                         }
-                        .environment(router)
-                        // Applied here, inside ThemeProvider's content, so it wins
-                        // over ThemeProvider's own internal `.tint(theme.colors.primary)` —
-                        // a `.tint()` set closer to the leaves overrides one set further out.
                         .tint(Color.minus.primaryAction)
                 }
             }
             .ignoresSafeArea(.keyboard)
             .preferredColorScheme(themeManager.colorScheme)
+            .environment(router)
             .environment(themeManager)
             .environment(\.transactionRepository, txRepo)
             .environment(\.periodRepository, periodRepo)
+            .environment(\.splitModePreferenceRepository, splitModePreferenceRepo)
+            .environment(\.creditCardPreferenceRepository, creditCardPreferenceRepo)
             .modelContainer(container)
         }
     }

@@ -17,13 +17,15 @@ class TransactionEntity {
     var clientGeneratedId: String
     var periodId: UUID
     var isDeleted: Bool
-    var isCredit: Bool
+    @Attribute(originalName: "isCredit") var isIncome: Bool
+    var isCreditCardCharge: Bool = false
+    var isCreditCardPaid: Bool = false
     var categoryId: UUID
     var categoryName: String?
     var recurrentFrequency: String?
     var recurrentEndDate: Date?
     var subscriptionDay: Int?
-    
+
     init(
         id: UUID,
         amount: Double,
@@ -31,7 +33,9 @@ class TransactionEntity {
         clientGeneratedId: String,
         periodId: UUID,
         isDeleted: Bool,
-        isCredit: Bool,
+        isIncome: Bool,
+        isCreditCardCharge: Bool = false,
+        isCreditCardPaid: Bool = false,
         categoryId: UUID,
         categoryName: String? = nil,
         recurrentFrequency: String? = nil,
@@ -44,7 +48,9 @@ class TransactionEntity {
         self.clientGeneratedId = clientGeneratedId
         self.periodId = periodId
         self.isDeleted = isDeleted
-        self.isCredit = isCredit
+        self.isIncome = isIncome
+        self.isCreditCardCharge = isCreditCardCharge
+        self.isCreditCardPaid = isCreditCardPaid
         self.categoryId = categoryId
         self.categoryName = categoryName
         self.recurrentFrequency = recurrentFrequency

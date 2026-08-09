@@ -16,7 +16,9 @@ protocol TransactionRepository {
     func delete(transactionId: UUID) async throws
    
     func getTransaction(id: UUID) async throws -> Transaction?
-    
+
+    func getTransaction(byClientGeneratedId clientGeneratedId: String) async throws -> Transaction?
+
     func getAllTransactions() async throws -> [Transaction]
     
     func getTransactions(forPeriod periodId: UUID) async throws -> [Transaction]

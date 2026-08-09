@@ -61,6 +61,21 @@ class RecurringNotificationService {
         }
     }
 
+    static func sendTestNotification() {
+        let content = UNMutableNotificationContent()
+        content.sound = .default
+        content.body = String(localized: "Your recurring payment Test Subscription of: \(formattedAmount(99)) is due in 3 days")
+
+        let request = UNNotificationRequest(
+            identifier: "test-recurring-\(UUID().uuidString)",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
+        )
+        Task {
+            try? await UNUserNotificationCenter.current().add(request)
+        }
+    }
+
     static func cancel(transactionId: UUID) {
         let ids = daysBeforeRange.map { identifier(transactionId: transactionId, daysBefore: $0) }
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)

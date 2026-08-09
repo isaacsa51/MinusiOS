@@ -26,18 +26,30 @@ class PeriodReportRepositoryImpl: PeriodRepository {
             remainingStrategy: period.remainingStrategy.rawValue,
             periodType: period.periodType.rawValue,
             daysInPeriod: period.daysInPeriod,
-            carryOverAmount: NSDecimalNumber(decimal: period.carryOverAmount).doubleValue
+            carryOverAmount: NSDecimalNumber(decimal: period.carryOverAmount).doubleValue,
+            externalId: period.externalId
         )
 
         context.insert(entity)
         try context.save()
     }
-    
+
     func getPeriod(id: UUID) async throws -> PeriodKey? {
         let predicate = #Predicate<PeriodEntity> { $0.id == id }
         var descriptor = FetchDescriptor<PeriodEntity>(predicate: predicate)
         descriptor.fetchLimit = 1
-        
+
+        if let entity = try context.fetch(descriptor).first {
+            return mapToDomain(entity)
+        }
+        return nil
+    }
+
+    func getPeriod(byExternalId externalId: String) async throws -> PeriodKey? {
+        let predicate = #Predicate<PeriodEntity> { $0.externalId == externalId }
+        var descriptor = FetchDescriptor<PeriodEntity>(predicate: predicate)
+        descriptor.fetchLimit = 1
+
         if let entity = try context.fetch(descriptor).first {
             return mapToDomain(entity)
         }
@@ -88,7 +100,8 @@ class PeriodReportRepositoryImpl: PeriodRepository {
             remainingStrategy: RemainingBudgetStrategy(rawValue: entity.remainingStrategy) ?? .ASK_ALWAYS,
             periodType: BudgetPeriod(rawValue: entity.periodType) ?? .monthly,
             daysInPeriod: entity.daysInPeriod,
-            carryOverAmount: Decimal(entity.carryOverAmount)
+            carryOverAmount: Decimal(entity.carryOverAmount),
+            externalId: entity.externalId
         )
     }
 }

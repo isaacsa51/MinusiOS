@@ -27,20 +27,51 @@ class BudgetPeriodViewModel {
     var selectedSplitMode: BudgetPeriod = .daily
     private(set) var spentInSplit: Decimal = 0
     private(set) var spentInPeriod: Decimal = 0
+    private var spentBeforeToday: Decimal = 0
 
     private let getCurrentPeriodUseCase: GetCurrentPeriodIdIUseCase
     private let createBudgetPeriodUseCase: CreateBudgetPeriodUseCase
     private let finishPeriodEarlyUseCase: FinishPeriodEarlyUseCase
     private let transactionRepository: TransactionRepository
+    private let splitModePreferenceRepository: SplitModePreferenceRepository
+    // deinit runs nonisolated even on a @MainActor class, so this token — a plain opaque
+    // handle that's safe to read/remove from any thread — can't be MainActor-isolated.
+    nonisolated(unsafe) private var splitModeObserverToken: NSObjectProtocol?
 
-    init(periodRepo: PeriodRepository, transactionRepo: TransactionRepository) {
+    init(periodRepo: PeriodRepository, transactionRepo: TransactionRepository, splitModePreferenceRepo: SplitModePreferenceRepository) {
         self.getCurrentPeriodUseCase = GetCurrentPeriodIdIUseCase(repository: periodRepo)
         self.createBudgetPeriodUseCase = CreateBudgetPeriodUseCase(repository: periodRepo, transactionRepository: transactionRepo)
         self.finishPeriodEarlyUseCase = FinishPeriodEarlyUseCase(repository: periodRepo)
         self.transactionRepository = transactionRepo
-        if let saved = UserDefaults.standard.string(forKey: "selectedSplitMode"),
-           let mode = BudgetPeriod(rawValue: saved) {
-            self.selectedSplitMode = mode
+        self.splitModePreferenceRepository = splitModePreferenceRepo
+        if let saved = splitModePreferenceRepo.getSelectedSplitMode() {
+            self.selectedSplitMode = saved
+        }
+        observeSplitModeChanges()
+    }
+
+    deinit {
+        if let token = splitModeObserverToken {
+            NotificationCenter.default.removeObserver(token)
+        }
+    }
+
+    // Picks up selectedSplitMode changes written from elsewhere (e.g. a CSV import) while this
+    // view model is already alive, since it's a plain var read once at init.
+    private func observeSplitModeChanges() {
+        splitModeObserverToken = NotificationCenter.default.addObserver(
+            forName: .splitModeDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      let mode = self.splitModePreferenceRepository.getSelectedSplitMode(),
+                      mode != self.selectedSplitMode
+                else { return }
+                self.selectedSplitMode = mode
+                await self.loadSpending()
+            }
         }
     }
 
@@ -57,11 +88,26 @@ class BudgetPeriodViewModel {
     }
 
     var splitBudget: Decimal {
+        splitAmount(for: selectedSplitMode)
+    }
+
+    func splitAmount(for mode: BudgetPeriod) -> Decimal {
         guard let period = activePeriod else { return 0 }
         var rounded = Decimal()
-        var mutable = period.splitAmount(for: selectedSplitMode)
+        var mutable = period.splitAmount(for: mode, dailyRate: dynamicDailyRate)
         NSDecimalRound(&rounded, &mutable, 2, .plain)
         return rounded
+    }
+
+    private var dynamicDailyRate: Decimal {
+        guard let period = activePeriod else { return 0 }
+        let calendar = Calendar.current
+        let periodStart = calendar.startOfDay(for: period.startDate)
+        let startOfToday = calendar.startOfDay(for: Date())
+        let daysElapsed = max(0, calendar.dateComponents([.day], from: periodStart, to: startOfToday).day ?? 0)
+        let remainingDays = max(1, period.daysInPeriod - daysElapsed)
+        let remainingBudget = (period.totalBudget - period.carryOverAmount) - spentBeforeToday
+        return remainingBudget / Decimal(remainingDays)
     }
 
     var pillAmount: String {
@@ -76,12 +122,12 @@ class BudgetPeriodViewModel {
     }
 
     var spendingProgress: Double {
-        guard splitBudget > 0 else { return 0 }
+        guard splitBudget > 0 else { return 1.0 }
         return NSDecimalNumber(decimal: spentInSplit / splitBudget).doubleValue
     }
 
     var isExceeded: Bool {
-        spendingProgress >= 1.0
+        splitBudget <= 0 || spendingProgress >= 1.0
     }
 
     var pillColor: Color {
@@ -160,13 +206,18 @@ class BudgetPeriodViewModel {
             )
             let periodTransactions = transactions.filter { $0.periodId == period.id && !$0.isDeleted }
             spentInSplit = periodTransactions.reduce(Decimal.zero) { total, tx in
-                tx.isCredit ? total - tx.amount : total + tx.amount
+                tx.isIncome ? total - tx.amount : total + tx.amount
             }
 
             let allPeriodTransactions = try await transactionRepository.getTransactions(forPeriod: period.id)
             spentInPeriod = allPeriodTransactions.reduce(Decimal.zero) { total, tx in
-                tx.isCredit ? total - tx.amount : total + tx.amount
+                tx.isIncome ? total - tx.amount : total + tx.amount
             }
+            spentBeforeToday = allPeriodTransactions
+                .filter { $0.createdAt < startOfToday }
+                .reduce(Decimal.zero) { total, tx in
+                    tx.isIncome ? total - tx.amount : total + tx.amount
+                }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -174,7 +225,7 @@ class BudgetPeriodViewModel {
 
     func updateSplitMode(_ mode: BudgetPeriod) {
         selectedSplitMode = mode
-        UserDefaults.standard.set(mode.rawValue, forKey: "selectedSplitMode")
+        splitModePreferenceRepository.setSelectedSplitMode(mode)
         Task { await loadSpending() }
     }
 

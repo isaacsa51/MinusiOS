@@ -11,7 +11,9 @@ protocol PeriodRepository {
     func save(period: PeriodKey) async throws
     
     func getPeriod(id: UUID) async throws -> PeriodKey?
-    
+
+    func getPeriod(byExternalId externalId: String) async throws -> PeriodKey?
+
     func getActivePeriod() async throws -> PeriodKey?
     
     func getAllPeriods() async throws -> [PeriodKey]

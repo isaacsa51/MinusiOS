@@ -6,9 +6,12 @@
 import SwiftUI
 
 struct AnalyticsView: View {
+    @Environment(NavigationRouter.self) private var router
     @Environment(\.transactionRepository) private var txRepo
     @Environment(\.periodRepository) private var periodRepo
     @State private var viewModel: AnalyticsViewModel?
+
+    var periodId: UUID? = nil
 
     var body: some View {
         Group {
@@ -20,14 +23,34 @@ struct AnalyticsView: View {
             }
         }
         .background(Color.minus.background.ignoresSafeArea())
-        .navigationTitle("Analytics")
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    router.navigate(to: .pastPeriods)
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                }
+                .accessibilityLabel("Past budget periods")
+            }
+        }
         .task {
             guard viewModel == nil, let periodRepo, let txRepo else { return }
             let vm = AnalyticsViewModel(periodRepo: periodRepo, transactionRepo: txRepo)
             viewModel = vm
-            await vm.load()
+            await vm.load(periodId: periodId)
         }
+    }
+
+    private var navigationTitle: String {
+        guard periodId != nil, let period = viewModel?.displayedPeriod else {
+            return String(localized: "Analytics")
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        formatter.locale = Locale(identifier: "en_US")
+        return "\(formatter.string(from: period.startDate)) – \(formatter.string(from: period.effectiveEndDate))"
     }
 
     @ViewBuilder
@@ -35,7 +58,7 @@ struct AnalyticsView: View {
         if viewModel.isLoading {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let period = viewModel.activePeriod, viewModel.analytics.transactionCount > 0 {
+        } else if let period = viewModel.displayedPeriod, viewModel.analytics.transactionCount > 0 {
             ScrollView {
                 VStack(spacing: 20) {
                     totalTrendCard(viewModel)
@@ -73,8 +96,8 @@ struct AnalyticsView: View {
                 }
                 .padding(20)
             }
-        } else if viewModel.activePeriod == nil {
-            emptyState(message: "No active budget period yet.")
+        } else if viewModel.displayedPeriod == nil {
+            emptyState(message: periodId == nil ? "No active budget period yet." : "Budget period not found.")
         } else {
             emptyState(message: "No spending recorded for this period yet.")
         }
@@ -285,6 +308,7 @@ struct AnalyticsView: View {
 private class PreviewPeriodRepository: PeriodRepository {
     func save(period: PeriodKey) async throws {}
     func getPeriod(id: UUID) async throws -> PeriodKey? { nil }
+    func getPeriod(byExternalId externalId: String) async throws -> PeriodKey? { nil }
     func getActivePeriod() async throws -> PeriodKey? {
         PeriodKey(
             id: UUID(),
@@ -306,6 +330,7 @@ private class PreviewTransactionRepository: TransactionRepository {
     func save(transaction: Transaction) async throws {}
     func delete(transactionId: UUID) async throws {}
     func getTransaction(id: UUID) async throws -> Transaction? { nil }
+    func getTransaction(byClientGeneratedId clientGeneratedId: String) async throws -> Transaction? { nil }
     func getAllTransactions() async throws -> [Transaction] { [] }
     func getTransactions(forCategory categoryId: UUID) async throws -> [Transaction] { [] }
     func getTransactions(between startDate: Date, and endDate: Date) async throws -> [Transaction] { [] }
@@ -324,7 +349,7 @@ private class PreviewTransactionRepository: TransactionRepository {
                 periodId: periodId,
                 categoryId: UUID(),
                 categoryName: entry.0,
-                isCredit: false
+                isIncome: false
             )
         }
     }
@@ -333,6 +358,7 @@ private class PreviewTransactionRepository: TransactionRepository {
 #Preview {
     NavigationStack {
         AnalyticsView()
+            .environment(NavigationRouter())
             .environment(\.periodRepository, PreviewPeriodRepository())
             .environment(\.transactionRepository, PreviewTransactionRepository())
     }

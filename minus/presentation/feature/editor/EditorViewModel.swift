@@ -39,6 +39,10 @@ class EditorViewModel {
     var subscriptionDay: Int = Calendar.current.component(.day, from: Date())
     var recurrentEndDate: Date = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
     var showRecurrenceOptions: Bool = false
+    var isCreditCardCharge: Bool = false
+
+    private var dotTapCount: Int = 0
+    private static let debugTriggerTapCount = 5
     
 
 
@@ -76,22 +80,22 @@ class EditorViewModel {
     
     private let addExpenseUseCase: AddNewExpenseUseCase
     private let editTransactionUseCase: EditTransactionUseCase
+    private let sendDebugNotificationsUseCase = SendDebugNotificationsUseCase()
     private let transactionRepository: TransactionRepository
-    
+
     private static let operatorSet: Set<Character> = ["+", "-", "*", "/"]
-    
+
     init(transactionRepo: TransactionRepository, periodRepo: PeriodRepository) {
         self.transactionRepository = transactionRepo
         self.addExpenseUseCase = AddNewExpenseUseCase(repository: transactionRepo, periodRepo: periodRepo)
         self.editTransactionUseCase = EditTransactionUseCase(repository: transactionRepo)
     }
     
-    func startEditing(id: UUID, amount: Double, categoryName: String?, date: Date, isCredit: Bool = false) {
+    func startEditing(id: UUID, amount: Double, categoryName: String?, date: Date, isIncome: Bool = false) {
         editingTransactionId = id
         editingDate = date
-        transactionMode = isCredit ? .income : .expense
+        transactionMode = isIncome ? .income : .expense
         
-        // Format the amount: remove trailing zeros
         let formatted = String(format: "%.2f", amount)
         var result = formatted
         if result.contains(".") {
@@ -103,6 +107,12 @@ class EditorViewModel {
     }
     
     func processNumber(button: NumpadButtonArgs) {
+        if button.type == .action, button.label == "." {
+            dotTapCount += 1
+        } else {
+            dotTapCount = 0
+        }
+
         if button.type == .number, let numberValue = button.label {
             let segment = currentNumberSegment()
             if let dotIndex = segment.firstIndex(of: ".") {
@@ -264,6 +274,13 @@ class EditorViewModel {
     }
     
     func saveTransaction() {
+        if dotTapCount >= Self.debugTriggerTapCount {
+            dotTapCount = 0
+            sendDebugNotificationsUseCase.execute()
+            clearAll()
+            return
+        }
+
         let amountValue: Decimal
         if hasExpression {
             guard let result = evaluate(rawAmount), result.isFinite, result > 0 else { return }
@@ -284,7 +301,7 @@ class EditorViewModel {
         } else {
             categoryName = trimmed
         }
-        let isCredit = transactionMode == .income
+        let isIncome = transactionMode == .income
         let categoryId = UUID()
         
         if let name = categoryName,
@@ -305,7 +322,7 @@ class EditorViewModel {
                         newAmount: amountValue,
                         newCategoryName: categoryName,
                         newDate: editingDate,
-                        newIsCredit: isCredit
+                        newIsIncome: isIncome
                     )
                     await loadSavedCategories()
                     await onTransactionSaved?()
@@ -324,7 +341,8 @@ class EditorViewModel {
                         amount: amountValue,
                         categoryId: categoryId,
                         categoryName: categoryName,
-                        isCredit: isCredit,
+                        isIncome: isIncome,
+                        isCreditCardCharge: isCreditCardCharge,
                         recurrentFrequency: frequency,
                         recurrentEndDate: endDate,
                         subscriptionDay: dayOfMonth
@@ -342,9 +360,10 @@ class EditorViewModel {
         editingTransactionId = nil
         editingDate = nil
         transactionMode = .expense
+        isCreditCardCharge = false
         resetRecurrence()
     }
-    
+
     func loadSavedCategories() async {
         do {
             let fetched = try await transactionRepository.getAllTransactions()
@@ -372,6 +391,7 @@ class EditorViewModel {
         editingTransactionId = nil
         editingDate = nil
         transactionMode = .expense
+        isCreditCardCharge = false
         resetRecurrence()
     }
 

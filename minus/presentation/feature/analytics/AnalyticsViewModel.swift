@@ -8,24 +8,32 @@ import SwiftUI
 @MainActor
 @Observable
 class AnalyticsViewModel {
-    var activePeriod: PeriodKey?
+    var displayedPeriod: PeriodKey?
     var analytics: PeriodAnalytics = .empty
     var isLoading = true
     var errorMessage: String?
 
     private let getCurrentPeriodUseCase: GetCurrentPeriodIdIUseCase
+    private let getPeriodUseCase: GetPeriodUseCase
     private let getPeriodAnalyticsUseCase: GetPeriodAnalyticsUseCase
 
     init(periodRepo: PeriodRepository, transactionRepo: TransactionRepository) {
         self.getCurrentPeriodUseCase = GetCurrentPeriodIdIUseCase(repository: periodRepo)
+        self.getPeriodUseCase = GetPeriodUseCase(repository: periodRepo)
         self.getPeriodAnalyticsUseCase = GetPeriodAnalyticsUseCase(transactionRepository: transactionRepo)
     }
 
-    func load() async {
+    /// `periodId` nil shows the currently active budget period; a specific id shows a past one.
+    func load(periodId: UUID? = nil) async {
         isLoading = true
         do {
-            let period = try await getCurrentPeriodUseCase.execute()
-            activePeriod = period
+            let period: PeriodKey?
+            if let periodId {
+                period = try await getPeriodUseCase.execute(id: periodId)
+            } else {
+                period = try await getCurrentPeriodUseCase.execute()
+            }
+            displayedPeriod = period
             if let period {
                 analytics = try await getPeriodAnalyticsUseCase.execute(periodId: period.id)
             } else {
@@ -38,7 +46,7 @@ class AnalyticsViewModel {
     }
 
     private var currencySymbol: String {
-        Currency.find(byCode: activePeriod?.currency ?? "")?.symbol ?? "$"
+        Currency.find(byCode: displayedPeriod?.currency ?? "")?.symbol ?? "$"
     }
 
     func formattedAmount(_ amount: Decimal) -> String {
@@ -74,7 +82,7 @@ class AnalyticsViewModel {
     /// Total spent divided by days elapsed so far in the period — not the
     /// full period length, so it isn't deflated by days that haven't happened yet.
     var dailyAverageSpent: String {
-        guard let period = activePeriod else { return formattedAmount(0) }
+        guard let period = displayedPeriod else { return formattedAmount(0) }
 
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: period.startDate)
@@ -91,7 +99,7 @@ class AnalyticsViewModel {
     /// period — stops at today rather than running out to the period's
     /// (possibly still-future) end date.
     private var cumulativeBuckets: [(date: Date, total: Decimal)] {
-        guard let period = activePeriod, !analytics.dailyTotals.isEmpty else { return [] }
+        guard let period = displayedPeriod, !analytics.dailyTotals.isEmpty else { return [] }
 
         let calendar = Calendar.current
         let amountByDay = Dictionary(uniqueKeysWithValues: analytics.dailyTotals.map {
@@ -130,13 +138,13 @@ class AnalyticsViewModel {
 
     /// The 50/30/20 method's savings slice: 20% of the period's budget.
     var idealSavings: Decimal {
-        (activePeriod?.totalBudget ?? 0) * 0.20
+        (displayedPeriod?.totalBudget ?? 0) * 0.20
     }
 
     /// What's actually left once spending is subtracted — floored at 0
     /// (overspending doesn't produce "negative savings" here, just 0).
     var actualSavings: Decimal {
-        max(0, (activePeriod?.totalBudget ?? 0) - analytics.totalSpent)
+        max(0, (displayedPeriod?.totalBudget ?? 0) - analytics.totalSpent)
     }
 
     /// `actualSavings` as a fraction of `idealSavings`, uncapped (can exceed
@@ -165,7 +173,7 @@ class AnalyticsViewModel {
     }
 
     private func budgetShareLabel(_ amount: Decimal) -> String {
-        guard let budget = activePeriod?.totalBudget, budget > 0 else { return "0%" }
+        guard let budget = displayedPeriod?.totalBudget, budget > 0 else { return "0%" }
         let percent = NSDecimalNumber(decimal: amount / budget * 100).doubleValue
         return "\(formattedAmount(amount)) (\(Int(percent.rounded()))%)"
     }

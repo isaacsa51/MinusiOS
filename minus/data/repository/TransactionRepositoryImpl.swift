@@ -26,7 +26,9 @@ class TransactionRepositoryImpl: TransactionRepository {
             clientGeneratedId: transaction.clientGeneratedId,
             periodId: transaction.periodId,
             isDeleted: transaction.isDeleted,
-            isCredit: transaction.isCredit,
+            isIncome: transaction.isIncome,
+            isCreditCardCharge: transaction.isCreditCardCharge,
+            isCreditCardPaid: transaction.isCreditCardPaid,
             categoryId: transaction.categoryId,
             categoryName: transaction.categoryName,
             recurrentFrequency: transaction.recurrentFrequency?.rawValue,
@@ -65,6 +67,17 @@ class TransactionRepositoryImpl: TransactionRepository {
         return nil
     }
     
+    func getTransaction(byClientGeneratedId clientGeneratedId: String) async throws -> Transaction? {
+        let predicate = #Predicate<TransactionEntity> { $0.clientGeneratedId == clientGeneratedId }
+        var descriptor = FetchDescriptor<TransactionEntity>(predicate: predicate)
+        descriptor.fetchLimit = 1
+
+        if let entity = try context.fetch(descriptor).first {
+            return mapToDomain(entity)
+        }
+        return nil
+    }
+
     func getAllTransactions() async throws -> [Transaction] {
         let predicate = #Predicate<TransactionEntity> { $0.isDeleted == false }
         
@@ -132,7 +145,9 @@ class TransactionRepositoryImpl: TransactionRepository {
             subscriptionDay: entity.subscriptionDay,
             categoryId: entity.categoryId,
             categoryName: entity.categoryName,
-            isCredit: entity.isCredit
+            isIncome: entity.isIncome,
+            isCreditCardCharge: entity.isCreditCardCharge,
+            isCreditCardPaid: entity.isCreditCardPaid
         )
     }
 }

@@ -12,11 +12,16 @@ struct EditorView: View {
     @Environment(NavigationRouter.self) var router
     @Environment(\EnvironmentValues.transactionRepository) private var txRepo
     @Environment(\EnvironmentValues.periodRepository) private var periodRepo
+    @Environment(\EnvironmentValues.splitModePreferenceRepository) private var splitModePreferenceRepo
     @State private var viewModel: EditorViewModel?
     @State private var budgetVM: BudgetPeriodViewModel?
     @State private var isShowingBudgetDetailsSheet = false
     @State private var isShowingHistorySheet = false
     @State private var amountDragOffset: CGFloat = 0
+    @AppStorage("useCreditCardPayments") private var useCreditCardPayments = false
+    @AppStorage("creditCardCutoffDay") private var creditCardCutoffDay = 0
+    @State private var showCreditCardCutoffPrompt = false
+    @State private var creditCardCutoffDayInput = ""
 
     private let openSheetThreshold: CGFloat = 60
     private let dragResistance: CGFloat = 0.4
@@ -95,29 +100,54 @@ struct EditorView: View {
                             Spacer()
 
                             if viewModel.hasValue {
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        viewModel.isRecurring.toggle()
-                                        if viewModel.isRecurring {
-                                            viewModel.showRecurrenceOptions = true
+                                HStack(spacing: 4) {
+                                    if useCreditCardPayments {
+                                        Button {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                viewModel.isCreditCardCharge.toggle()
+                                            }
+                                            if viewModel.isCreditCardCharge && creditCardCutoffDay == 0 {
+                                                creditCardCutoffDayInput = ""
+                                                showCreditCardCutoffPrompt = true
+                                            }
+                                        } label: {
+                                            Image(systemName: viewModel.isCreditCardCharge ? "creditcard.fill" : "creditcard")
+                                                .font(.system(size: 24, weight: .semibold))
+                                                .foregroundStyle(
+                                                    viewModel.isCreditCardCharge
+                                                        ? Color.minus.primaryAction
+                                                        : Color.minus.textSecondary
+                                                )
+                                                .frame(width: 44, height: 44)
                                         }
+                                        .accessibilityLabel("Credit card charge")
+                                        .transition(.blurReplace)
                                     }
-                                } label: {
-                                    Image(systemName: viewModel.isRecurring ? "repeat.circle.fill" : "repeat.circle")
-                                        .font(.system(size: 24, weight: .semibold))
-                                        .foregroundStyle(
-                                            viewModel.isRecurring
-                                                ? Color.minus.primaryAction
-                                                : Color.minus.textSecondary
-                                        )
-                                        .frame(width: 44, height: 44)
+
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            viewModel.isRecurring.toggle()
+                                            if viewModel.isRecurring {
+                                                viewModel.showRecurrenceOptions = true
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: viewModel.isRecurring ? "repeat.circle.fill" : "repeat.circle")
+                                            .font(.system(size: 24, weight: .semibold))
+                                            .foregroundStyle(
+                                                viewModel.isRecurring
+                                                    ? Color.minus.primaryAction
+                                                    : Color.minus.textSecondary
+                                            )
+                                            .frame(width: 44, height: 44)
+                                    }
+                                    .accessibilityLabel("Recurring payment")
+                                    .transition(.blurReplace)
                                 }
-                                .accessibilityLabel("Recurring payment")
-                                .transition(.blurReplace)
                             } else {
                                 HStack(spacing: 12) {
                                     Button(action: {
-                                        router.navigate(to: .analytics)
+                                        router.navigate(to: .analytics(periodId: nil))
                                     }) {
                                         Image(systemName: "chart.line.uptrend.xyaxis")
                                             .font(.system(size: 20, weight: .semibold))
@@ -185,8 +215,8 @@ struct EditorView: View {
             if viewModel == nil, let txRepo, let periodRepo {
                 viewModel = EditorViewModel(transactionRepo: txRepo, periodRepo: periodRepo)
             }
-            if budgetVM == nil, let periodRepo, let txRepo {
-                budgetVM = BudgetPeriodViewModel(periodRepo: periodRepo, transactionRepo: txRepo)
+            if budgetVM == nil, let periodRepo, let txRepo, let splitModePreferenceRepo {
+                budgetVM = BudgetPeriodViewModel(periodRepo: periodRepo, transactionRepo: txRepo, splitModePreferenceRepo: splitModePreferenceRepo)
             }
             let localBudgetVM = budgetVM
             viewModel?.onTransactionSaved = {
@@ -220,8 +250,8 @@ struct EditorView: View {
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
-            HistoryView(activePeriodId: budgetVM?.activePeriod?.id) { id, amount, categoryName, date, isCredit in
-                viewModel?.startEditing(id: id, amount: amount, categoryName: categoryName, date: date, isCredit: isCredit)
+            HistoryView(activePeriodId: budgetVM?.activePeriod?.id) { id, amount, categoryName, date, isIncome in
+                viewModel?.startEditing(id: id, amount: amount, categoryName: categoryName, date: date, isIncome: isIncome)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                     isShowingHistorySheet = false
                 }
@@ -239,6 +269,20 @@ struct EditorView: View {
             Button("OK") { viewModel?.errorMessage = nil }
         } message: {
             Text(viewModel?.errorMessage ?? "")
+        }
+        .alert("Día de corte de tu tarjeta", isPresented: $showCreditCardCutoffPrompt) {
+            TextField("Día del mes (1-31)", text: $creditCardCutoffDayInput)
+                .keyboardType(.numberPad)
+            Button("Guardar") {
+                if let day = Int(creditCardCutoffDayInput), (1...31).contains(day) {
+                    creditCardCutoffDay = day
+                }
+            }
+            Button("Cancelar", role: .cancel) {
+                viewModel?.isCreditCardCharge = false
+            }
+        } message: {
+            Text("Indica el día del mes en el que corta tu tarjeta de crédito para llevar el seguimiento de este gasto.")
         }
     }
 

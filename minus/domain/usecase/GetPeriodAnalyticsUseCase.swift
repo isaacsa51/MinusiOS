@@ -17,7 +17,7 @@ class GetPeriodAnalyticsUseCase {
     func execute(periodId: UUID) async throws -> PeriodAnalytics {
         let expenses = try await transactionRepository
             .getTransactions(forPeriod: periodId)
-            .filter { !$0.isCredit }
+            .filter { !$0.isIncome }
             .sorted { $0.createdAt < $1.createdAt }
 
         guard !expenses.isEmpty else { return .empty }

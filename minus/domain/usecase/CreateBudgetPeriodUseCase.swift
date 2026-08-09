@@ -76,7 +76,7 @@ class CreateBudgetPeriodUseCase {
     private func remainingBudget(for period: PeriodKey) async throws -> Decimal {
         let transactions = try await transactionRepository.getTransactions(forPeriod: period.id)
         let spent = transactions.reduce(Decimal.zero) { total, tx in
-            tx.isCredit ? total - tx.amount : total + tx.amount
+            tx.isIncome ? total - tx.amount : total + tx.amount
         }
         return period.totalBudget - spent
     }

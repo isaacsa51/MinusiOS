@@ -10,7 +10,7 @@ import SwiftData
 
 struct HistoryView: View {
     var activePeriodId: UUID?
-    var onEditTransaction: ((_ id: UUID, _ amount: Double, _ categoryName: String?, _ date: Date, _ isCredit: Bool) -> Void)?
+    var onEditTransaction: ((_ id: UUID, _ amount: Double, _ categoryName: String?, _ date: Date, _ isIncome: Bool) -> Void)?
     
     @Environment(\.transactionRepository) private var transactionRepository
     
@@ -56,7 +56,7 @@ struct HistoryView: View {
             .map { (date, txs) in
                 let sorted = txs.sorted { $0.createdAt > $1.createdAt }
                 let total = sorted.reduce(Decimal.zero) { total, tx in
-                    tx.isCredit ? total - Decimal(tx.amount) : total + Decimal(tx.amount)
+                    tx.isIncome ? total - Decimal(tx.amount) : total + Decimal(tx.amount)
                 }
                 return (date: formatter.string(from: date), transactions: sorted, total: total)
             }
@@ -124,10 +124,10 @@ struct HistoryView: View {
                         ForEach(group.transactions) { tx in
                             let rowId = "\(sectionId)-\(tx.id)"
                             TransactionRow(
-                                categoryName: tx.categoryName ?? (tx.isCredit ? "Income" : "Expense"),
+                                categoryName: tx.categoryName ?? (tx.isIncome ? "Income" : "Expense"),
                                 time: Self.timeFormatter.string(from: tx.createdAt),
-                                amount: formatAmount(Decimal(tx.amount), isCredit: tx.isCredit),
-                                isCredit: tx.isCredit,
+                                amount: formatAmount(Decimal(tx.amount), isIncome: tx.isIncome),
+                                isIncome: tx.isIncome,
                                 isExpanded: expandedRowId == rowId,
                                 fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
                                 onTap: {
@@ -140,7 +140,7 @@ struct HistoryView: View {
                                     }
                                 },
                                 onEdit: {
-                                    onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isCredit)
+                                    onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isIncome)
                                 },
                                 onDelete: {
                                     deleteTransaction(id: tx.id)
@@ -203,10 +203,10 @@ struct HistoryView: View {
             ForEach(items) { tx in
                 let rowId = "\(sectionId)-\(tx.id)"
                 TransactionRow(
-                    categoryName: tx.categoryName ?? (tx.isCredit ? "Income" : "Expense"),
+                    categoryName: tx.categoryName ?? (tx.isIncome ? "Income" : "Expense"),
                     time: Self.timeFormatter.string(from: tx.createdAt),
-                    amount: formatAmount(Decimal(tx.amount), isCredit: tx.isCredit),
-                    isCredit: tx.isCredit,
+                    amount: formatAmount(Decimal(tx.amount), isIncome: tx.isIncome),
+                    isIncome: tx.isIncome,
                     isExpanded: expandedRowId == rowId,
                     fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
                     onTap: {
@@ -219,7 +219,7 @@ struct HistoryView: View {
                         }
                     },
                     onEdit: {
-                        onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isCredit)
+                        onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isIncome)
                     },
                     onDelete: {
                         deleteTransaction(id: tx.id)
@@ -238,13 +238,13 @@ struct HistoryView: View {
         .padding(.bottom, 12)
     }
 
-    private func formatAmount(_ value: Decimal, isCredit: Bool = false) -> String {
+    private func formatAmount(_ value: Decimal, isIncome: Bool = false) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 2
         let formatted = formatter.string(from: value as NSDecimalNumber) ?? "0"
-        return isCredit ? "+$\(formatted)" : "$\(formatted)"
+        return isIncome ? "+$\(formatted)" : "$\(formatted)"
     }
     
     private func deleteTransaction(id: UUID) {
@@ -263,7 +263,7 @@ private struct TransactionRow: View {
     let categoryName: String
     let time: String
     let amount: String
-    let isCredit: Bool
+    let isIncome: Bool
     let isExpanded: Bool
     let fullDate: String
     let onTap: () -> Void
@@ -285,7 +285,7 @@ private struct TransactionRow: View {
                     Spacer()
                     Text(amount)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(isCredit ? Color.minus.success : Color.minus.textPrimary)
+                        .foregroundStyle(isIncome ? Color.minus.success : Color.minus.textPrimary)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.minus.textSecondary)
@@ -442,7 +442,7 @@ private struct HistoryPreview: View {
             context.insert(TransactionEntity(
                 id: UUID(), amount: amount, createdAt: date,
                 clientGeneratedId: UUID().uuidString, periodId: currentPeriodId,
-                isDeleted: false, isCredit: false, categoryId: UUID(), categoryName: category
+                isDeleted: false, isIncome: false, categoryId: UUID(), categoryName: category
             ))
         }
         
@@ -450,7 +450,7 @@ private struct HistoryPreview: View {
             context.insert(TransactionEntity(
                 id: UUID(), amount: amount, createdAt: date,
                 clientGeneratedId: UUID().uuidString, periodId: pastPeriodId,
-                isDeleted: false, isCredit: false, categoryId: UUID(), categoryName: category
+                isDeleted: false, isIncome: false, categoryId: UUID(), categoryName: category
             ))
         }
         

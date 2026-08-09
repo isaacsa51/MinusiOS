@@ -156,7 +156,7 @@ struct BudgetDetailsSheet: View {
     private func splitAmount(for period: BudgetPeriod) -> String {
         guard let active = viewModel.activePeriod else { return "$0" }
         let symbol = Currency.find(byCode: active.currency)?.symbol ?? "$"
-        let amount = active.splitAmount(for: period)
+        let amount = viewModel.splitAmount(for: period)
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 0
@@ -178,6 +178,7 @@ extension BudgetPeriod {
 private class PreviewPeriodRepository: PeriodRepository {
     func save(period: PeriodKey) async throws {}
     func getPeriod(id: UUID) async throws -> PeriodKey? { nil }
+    func getPeriod(byExternalId externalId: String) async throws -> PeriodKey? { nil }
     func getActivePeriod() async throws -> PeriodKey? {
         PeriodKey(
             id: UUID(),
@@ -199,6 +200,7 @@ private class PreviewTransactionRepository: TransactionRepository {
     func save(transaction: Transaction) async throws {}
     func delete(transactionId: UUID) async throws {}
     func getTransaction(id: UUID) async throws -> Transaction? { nil }
+    func getTransaction(byClientGeneratedId clientGeneratedId: String) async throws -> Transaction? { nil }
     func getAllTransactions() async throws -> [Transaction] { [] }
     func getTransactions(forPeriod periodId: UUID) async throws -> [Transaction] { [] }
     func getTransactions(forCategory categoryId: UUID) async throws -> [Transaction] { [] }
@@ -210,7 +212,8 @@ private class PreviewTransactionRepository: TransactionRepository {
         viewModel: {
             let vm = BudgetPeriodViewModel(
                 periodRepo: PreviewPeriodRepository(),
-                transactionRepo: PreviewTransactionRepository()
+                transactionRepo: PreviewTransactionRepository(),
+                splitModePreferenceRepo: UserDefaultsSplitModePreferenceRepository()
             )
             vm.activePeriod = PeriodKey(
                 id: UUID(),

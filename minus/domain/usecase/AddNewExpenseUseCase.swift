@@ -21,7 +21,8 @@ class AddNewExpenseUseCase {
         amount: Decimal,
         categoryId: UUID,
         categoryName: String?,
-        isCredit: Bool = false,
+        isIncome: Bool = false,
+        isCreditCardCharge: Bool = false,
         recurrentFrequency: RecurrentFrequency? = nil,
         recurrentEndDate: Date? = nil,
         subscriptionDay: Int? = nil
@@ -52,7 +53,8 @@ class AddNewExpenseUseCase {
             subscriptionDay: subscriptionDay,
             categoryId: categoryId,
             categoryName: categoryName,
-            isCredit: isCredit,
+            isIncome: isIncome,
+            isCreditCardCharge: isCreditCardCharge,
         )
         
         try await repository.save(transaction: transaction)

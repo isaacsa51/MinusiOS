@@ -23,6 +23,7 @@ struct PeriodKey: Identifiable {
     let periodType: BudgetPeriod
     let daysInPeriod: Int
     let carryOverAmount: Decimal
+    let externalId: String?
 
     init(
         id: UUID,
@@ -34,7 +35,8 @@ struct PeriodKey: Identifiable {
         remainingStrategy: RemainingBudgetStrategy,
         periodType: BudgetPeriod,
         daysInPeriod: Int,
-        carryOverAmount: Decimal = 0
+        carryOverAmount: Decimal = 0,
+        externalId: String? = nil
     ) {
         self.id = id
         self.startDate = startDate
@@ -46,6 +48,7 @@ struct PeriodKey: Identifiable {
         self.periodType = periodType
         self.daysInPeriod = daysInPeriod
         self.carryOverAmount = carryOverAmount
+        self.externalId = externalId
     }
 }
 
@@ -59,10 +62,8 @@ extension PeriodKey {
         ).getPeriodEndDate()
     }
 
-    func splitAmount(for mode: BudgetPeriod, referenceDate: Date = Date()) -> Decimal {
+    func splitAmount(for mode: BudgetPeriod, dailyRate: Decimal, referenceDate: Date = Date()) -> Decimal {
         let totalDays = max(1, daysInPeriod)
-        let baseTotal = totalBudget - carryOverAmount
-        let dailyRate = baseTotal / Decimal(totalDays)
 
         let multiplier: Int
         switch mode {

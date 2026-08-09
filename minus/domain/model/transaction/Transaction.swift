@@ -20,7 +20,9 @@ struct Transaction: Identifiable {
     var subscriptionDay: Int?
     let categoryId: UUID
     let categoryName: String?
-    var isCredit: Bool = false
+    var isIncome: Bool = false
+    var isCreditCardCharge: Bool = false
+    var isCreditCardPaid: Bool = false
 }
 
 enum RecurrentFrequency: String, CaseIterable {
