@@ -10,9 +10,7 @@ import SwiftUI
 
 struct EditorView: View {
     @Environment(NavigationRouter.self) var router
-    @Environment(\EnvironmentValues.transactionRepository) private var txRepo
-    @Environment(\EnvironmentValues.periodRepository) private var periodRepo
-    @Environment(\EnvironmentValues.splitModePreferenceRepository) private var splitModePreferenceRepo
+    @Environment(\.dependencies) private var dependencies
     @State private var viewModel: EditorViewModel?
     @State private var budgetVM: BudgetPeriodViewModel?
     @State private var isShowingBudgetDetailsSheet = false
@@ -212,11 +210,15 @@ struct EditorView: View {
         .background(Color.minus.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task {
-            if viewModel == nil, let txRepo, let periodRepo {
-                viewModel = EditorViewModel(transactionRepo: txRepo, periodRepo: periodRepo)
+            if viewModel == nil {
+                viewModel = EditorViewModel(transactionRepo: dependencies.transactionRepository, periodRepo: dependencies.periodRepository)
             }
-            if budgetVM == nil, let periodRepo, let txRepo, let splitModePreferenceRepo {
-                budgetVM = BudgetPeriodViewModel(periodRepo: periodRepo, transactionRepo: txRepo, splitModePreferenceRepo: splitModePreferenceRepo)
+            if budgetVM == nil {
+                budgetVM = BudgetPeriodViewModel(
+                    periodRepo: dependencies.periodRepository,
+                    transactionRepo: dependencies.transactionRepository,
+                    splitModePreferenceRepo: dependencies.splitModePreferenceRepository
+                )
             }
             let localBudgetVM = budgetVM
             viewModel?.onTransactionSaved = {
@@ -224,9 +226,7 @@ struct EditorView: View {
             }
             await budgetVM?.checkActivePeriod()
             await viewModel?.loadSavedCategories()
-            if let txRepo {
-                await RefreshRecurringNotificationsUseCase(transactionRepository: txRepo).execute()
-            }
+            await RefreshRecurringNotificationsUseCase(transactionRepository: dependencies.transactionRepository).execute()
         }
         .sheet(isPresented: $isShowingBudgetDetailsSheet) {
             if let vm = budgetVM {
@@ -261,6 +261,20 @@ struct EditorView: View {
             if !isShowing {
                 Task { await budgetVM?.loadSpending() }
             }
+        }
+        .onChange(of: router.pendingEditTransaction) { _, pending in
+            guard let pending else { return }
+            viewModel?.startEditing(
+                id: pending.id, amount: pending.amount, categoryName: pending.categoryName,
+                date: pending.date, isIncome: pending.isIncome
+            )
+            router.pendingEditTransaction = nil
+        }
+        .onChange(of: router.shouldPresentNewBudgetSheet) { _, shouldPresent in
+            guard shouldPresent else { return }
+            budgetVM?.resetForm()
+            budgetVM?.showNewBudgetSheet = true
+            router.shouldPresentNewBudgetSheet = false
         }
         .alert("Error", isPresented: Binding(
             get: { viewModel?.errorMessage != nil },

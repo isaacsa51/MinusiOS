@@ -8,7 +8,7 @@
 import Foundation
 
 //enum class to handle errors cases if in case
-enum TransactionError: LocalizedError {
+enum TransactionError: LocalizedError, Equatable {
     case invalidAmount
     case noActivePeriod
     case transactionNotFound

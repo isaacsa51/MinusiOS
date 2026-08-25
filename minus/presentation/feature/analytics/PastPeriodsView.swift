@@ -7,7 +7,7 @@ import SwiftUI
 
 struct PastPeriodsView: View {
     @Environment(NavigationRouter.self) private var router
-    @Environment(\.periodRepository) private var periodRepo
+    @Environment(\.dependencies) private var dependencies
     @State private var periods: [PeriodKey] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -52,10 +52,9 @@ struct PastPeriodsView: View {
     }
 
     private func load() async {
-        guard let periodRepo else { return }
         isLoading = true
         do {
-            let all = try await periodRepo.getAllPeriods()
+            let all = try await dependencies.periodRepository.getAllPeriods()
             let now = Date()
             // Only periods that have actually concluded — excludes the open-ended active
             // period (endDate nil) and any period scheduled but not yet reached its end date.
@@ -167,6 +166,6 @@ private class PreviewPeriodRepository: PeriodRepository {
     NavigationStack {
         PastPeriodsView()
             .environment(NavigationRouter())
-            .environment(\.periodRepository, PreviewPeriodRepository())
+            .environment(\.dependencies, .preview(periodRepository: PreviewPeriodRepository()))
     }
 }

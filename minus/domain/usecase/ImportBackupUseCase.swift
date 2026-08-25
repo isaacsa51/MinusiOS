@@ -13,7 +13,7 @@ struct ImportBackupResult {
     let splitMode: BudgetPeriod?
 }
 
-enum ImportBackupError: LocalizedError {
+enum ImportBackupError: LocalizedError, Equatable {
     case emptyFile
     case missingHeader
 

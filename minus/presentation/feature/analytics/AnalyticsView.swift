@@ -7,8 +7,7 @@ import SwiftUI
 
 struct AnalyticsView: View {
     @Environment(NavigationRouter.self) private var router
-    @Environment(\.transactionRepository) private var txRepo
-    @Environment(\.periodRepository) private var periodRepo
+    @Environment(\.dependencies) private var dependencies
     @State private var viewModel: AnalyticsViewModel?
 
     var periodId: UUID? = nil
@@ -36,8 +35,8 @@ struct AnalyticsView: View {
             }
         }
         .task {
-            guard viewModel == nil, let periodRepo, let txRepo else { return }
-            let vm = AnalyticsViewModel(periodRepo: periodRepo, transactionRepo: txRepo)
+            guard viewModel == nil else { return }
+            let vm = AnalyticsViewModel(periodRepo: dependencies.periodRepository, transactionRepo: dependencies.transactionRepository)
             viewModel = vm
             await vm.load(periodId: periodId)
         }
@@ -253,18 +252,21 @@ struct AnalyticsView: View {
                 )
             }
 
-            Button {
-                // Placeholder — not wired to period creation yet.
-            } label: {
-                Text("New Savings Period")
-                    .font(.system(size: 16, weight: .bold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.minus.primaryAction)
-                    .foregroundStyle(Color.minus.background)
-                    .clipShape(Capsule())
+            if periodId == nil {
+                Button {
+                    router.shouldPresentNewBudgetSheet = true
+                    router.popToRoot()
+                } label: {
+                    Text("New Savings Period")
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.minus.primaryAction)
+                        .foregroundStyle(Color.minus.background)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(20)
         .background(Color.minus.surface)
@@ -359,7 +361,9 @@ private class PreviewTransactionRepository: TransactionRepository {
     NavigationStack {
         AnalyticsView()
             .environment(NavigationRouter())
-            .environment(\.periodRepository, PreviewPeriodRepository())
-            .environment(\.transactionRepository, PreviewTransactionRepository())
+            .environment(\.dependencies, .preview(
+                transactionRepository: PreviewTransactionRepository(),
+                periodRepository: PreviewPeriodRepository()
+            ))
     }
 }

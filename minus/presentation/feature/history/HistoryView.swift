@@ -6,78 +6,78 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct HistoryView: View {
     var activePeriodId: UUID?
     var onEditTransaction: ((_ id: UUID, _ amount: Double, _ categoryName: String?, _ date: Date, _ isIncome: Bool) -> Void)?
-    
-    @Environment(\.transactionRepository) private var transactionRepository
-    
-    @Query(filter: #Predicate<TransactionEntity> { !$0.isDeleted },
-           sort: \TransactionEntity.createdAt, order: .reverse)
-    private var entities: [TransactionEntity]
-    
+
+    @Environment(\.dependencies) private var dependencies
+    @State private var viewModel: HistoryViewModel?
+
     @AppStorage("showPastPeriodExpenses") private var showPastPeriodExpensesEnabled = true
     @State private var expandedRowId: String?
     @State private var showPastPeriods = false
     @State private var collapsedDates: Set<String> = []
-    
-    private var currentPeriodEntities: [TransactionEntity] {
-        guard let periodId = activePeriodId else { return entities }
-        return entities.filter { $0.periodId == periodId }
+
+    private var transactions: [Transaction] {
+        viewModel?.transactions ?? []
     }
-    
-    private var recurringInPeriod: [TransactionEntity] {
-        currentPeriodEntities.filter { $0.recurrentFrequency != nil }
+
+    private var currentPeriodTransactions: [Transaction] {
+        guard let periodId = activePeriodId else { return transactions }
+        return transactions.filter { $0.periodId == periodId }
     }
-    
-    private var recurringOutsidePeriod: [TransactionEntity] {
+
+    private var recurringInPeriod: [Transaction] {
+        currentPeriodTransactions.filter { $0.recurrentFrequency != nil }
+    }
+
+    private var recurringOutsidePeriod: [Transaction] {
         guard let periodId = activePeriodId else { return [] }
-        return entities.filter { $0.periodId != periodId && $0.recurrentFrequency != nil }
+        return transactions.filter { $0.periodId != periodId && $0.recurrentFrequency != nil }
     }
-    
-    private var pastPeriodEntities: [TransactionEntity] {
+
+    private var pastPeriodTransactions: [Transaction] {
         guard let periodId = activePeriodId else { return [] }
-        return entities.filter { $0.periodId != periodId }
+        return transactions.filter { $0.periodId != periodId }
     }
-    
-    private func groupTransactions(_ source: [TransactionEntity]) -> [(date: String, transactions: [TransactionEntity], total: Decimal)] {
+
+    private func groupTransactions(_ source: [Transaction]) -> [(date: String, transactions: [Transaction], total: Decimal)] {
         let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.dateFormat = "dd MMMM"
-        
+
         let grouped = Dictionary(grouping: source) { tx in
             calendar.startOfDay(for: tx.createdAt)
         }
-        
+
         return grouped
             .sorted { $0.key > $1.key }
             .map { (date, txs) in
                 let sorted = txs.sorted { $0.createdAt > $1.createdAt }
                 let total = sorted.reduce(Decimal.zero) { total, tx in
-                    tx.isIncome ? total - Decimal(tx.amount) : total + Decimal(tx.amount)
+                    tx.isIncome ? total - tx.amount : total + tx.amount
                 }
                 return (date: formatter.string(from: date), transactions: sorted, total: total)
             }
     }
-    
+
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm a"
         return f
     }()
-    
+
     private static let fullDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .full
         f.timeStyle = .short
         return f
     }()
-    
+
     var body: some View {
         ScrollView {
-            if entities.isEmpty {
+            if transactions.isEmpty {
                 Text("No transactions yet")
                     .font(.system(size: 15))
                     .foregroundStyle(Color.minus.textSecondary)
@@ -89,14 +89,14 @@ struct HistoryView: View {
                         recurringList(for: recurringInPeriod, sectionId: "recurringInPeriod")
                     }
 
-                    transactionSections(for: groupTransactions(currentPeriodEntities), sectionId: "current")
+                    transactionSections(for: groupTransactions(currentPeriodTransactions), sectionId: "current")
 
                     if !recurringOutsidePeriod.isEmpty {
                         RecurringSectionHeader(title: "Recurring outside period")
                         recurringList(for: recurringOutsidePeriod, sectionId: "recurringOutsidePeriod")
                     }
 
-                    if showPastPeriodExpensesEnabled && !pastPeriodEntities.isEmpty {
+                    if showPastPeriodExpensesEnabled && !pastPeriodTransactions.isEmpty {
                         PastPeriodDivider(isExpanded: showPastPeriods) {
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 showPastPeriods.toggle()
@@ -104,17 +104,31 @@ struct HistoryView: View {
                         }
 
                         if showPastPeriods {
-                            transactionSections(for: groupTransactions(pastPeriodEntities), sectionId: "past")
+                            transactionSections(for: groupTransactions(pastPeriodTransactions), sectionId: "past")
                         }
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            guard viewModel == nil else { return }
+            let vm = HistoryViewModel(transactionRepository: dependencies.transactionRepository)
+            viewModel = vm
+            await vm.load()
+        }
+        .alert("Error", isPresented: Binding(
+            get: { viewModel?.errorMessage != nil },
+            set: { if !$0 { viewModel?.errorMessage = nil } }
+        )) {
+            Button("OK") { viewModel?.errorMessage = nil }
+        } message: {
+            Text(viewModel?.errorMessage ?? "")
+        }
     }
-    
+
     @ViewBuilder
-    private func transactionSections(for groups: [(date: String, transactions: [TransactionEntity], total: Decimal)], sectionId: String) -> some View {
+    private func transactionSections(for groups: [(date: String, transactions: [Transaction], total: Decimal)], sectionId: String) -> some View {
         ForEach(groups, id: \.date) { group in
             let isCollapsed = collapsedDates.contains(group.date)
 
@@ -126,7 +140,7 @@ struct HistoryView: View {
                             TransactionRow(
                                 categoryName: tx.categoryName ?? (tx.isIncome ? "Income" : "Expense"),
                                 time: Self.timeFormatter.string(from: tx.createdAt),
-                                amount: formatAmount(Decimal(tx.amount), isIncome: tx.isIncome),
+                                amount: formatAmount(tx.amount, isIncome: tx.isIncome),
                                 isIncome: tx.isIncome,
                                 isExpanded: expandedRowId == rowId,
                                 fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
@@ -140,13 +154,13 @@ struct HistoryView: View {
                                     }
                                 },
                                 onEdit: {
-                                    onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isIncome)
+                                    onEditTransaction?(tx.id, NSDecimalNumber(decimal: tx.amount).doubleValue, tx.categoryName, tx.createdAt, tx.isIncome)
                                 },
                                 onDelete: {
                                     deleteTransaction(id: tx.id)
                                 }
                             )
-                            
+
                             if tx.id != group.transactions.last?.id {
                                 Divider()
                                     .padding(.leading, 16)
@@ -156,7 +170,7 @@ struct HistoryView: View {
                     .background(Color.minus.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .padding(.horizontal, 16)
-                    
+
                     HStack {
                         Spacer()
                         Text("Total: \(formatAmount(group.total))")
@@ -196,16 +210,16 @@ struct HistoryView: View {
             }
         }
     }
-    
+
     @ViewBuilder
-    private func recurringList(for items: [TransactionEntity], sectionId: String) -> some View {
+    private func recurringList(for items: [Transaction], sectionId: String) -> some View {
         VStack(spacing: 0) {
             ForEach(items) { tx in
                 let rowId = "\(sectionId)-\(tx.id)"
                 TransactionRow(
                     categoryName: tx.categoryName ?? (tx.isIncome ? "Income" : "Expense"),
                     time: Self.timeFormatter.string(from: tx.createdAt),
-                    amount: formatAmount(Decimal(tx.amount), isIncome: tx.isIncome),
+                    amount: formatAmount(tx.amount, isIncome: tx.isIncome),
                     isIncome: tx.isIncome,
                     isExpanded: expandedRowId == rowId,
                     fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
@@ -219,7 +233,7 @@ struct HistoryView: View {
                         }
                     },
                     onEdit: {
-                        onEditTransaction?(tx.id, tx.amount, tx.categoryName, tx.createdAt, tx.isIncome)
+                        onEditTransaction?(tx.id, NSDecimalNumber(decimal: tx.amount).doubleValue, tx.categoryName, tx.createdAt, tx.isIncome)
                     },
                     onDelete: {
                         deleteTransaction(id: tx.id)
@@ -246,15 +260,13 @@ struct HistoryView: View {
         let formatted = formatter.string(from: value as NSDecimalNumber) ?? "0"
         return isIncome ? "+$\(formatted)" : "$\(formatted)"
     }
-    
+
     private func deleteTransaction(id: UUID) {
-        guard let repo = transactionRepository else { return }
         withAnimation(.easeInOut(duration: 0.25)) {
             expandedRowId = nil
         }
-        RecurringNotificationService.cancel(transactionId: id)
         Task {
-            try? await repo.delete(transactionId: id)
+            await viewModel?.deleteTransaction(id: id)
         }
     }
 }
@@ -269,7 +281,7 @@ private struct TransactionRow: View {
     let onTap: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 0) {
             Button(action: onTap) {
@@ -296,12 +308,12 @@ private struct TransactionRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            
+
             if isExpanded {
                 VStack(spacing: 0) {
                     Divider()
                         .padding(.leading, 16)
-                    
+
                     VStack(spacing: 8) {
                         DetailInfoRow(label: "Date", value: fullDate)
                         DetailInfoRow(label: "Category", value: categoryName)
@@ -309,7 +321,7 @@ private struct TransactionRow: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
-                    
+
                     HStack(spacing: 12) {
                         Button(action: onEdit) {
                             Label("Edit", systemImage: "pencil")
@@ -321,7 +333,7 @@ private struct TransactionRow: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
                         .buttonStyle(.plain)
-                        
+
                         Button(action: onDelete) {
                             Label("Delete", systemImage: "trash")
                                 .font(.system(size: 14, weight: .medium))
@@ -346,7 +358,7 @@ private struct TransactionRow: View {
 private struct DetailInfoRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         HStack {
             Text(label)
@@ -381,7 +393,7 @@ private struct RecurringSectionHeader: View {
 private struct PastPeriodDivider: View {
     let isExpanded: Bool
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
@@ -399,7 +411,7 @@ private struct PastPeriodDivider: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private var line: some View {
         Rectangle()
             .fill(Color.minus.divider)
@@ -407,23 +419,27 @@ private struct PastPeriodDivider: View {
     }
 }
 
-private struct HistoryPreview: View {
-    @Environment(\.modelContext) private var context
-    
-    private let currentPeriodId = UUID()
-    private let pastPeriodId = UUID()
-    
-    var body: some View {
-        TopSheetContainer(isPresented: .constant(true)) {
-            HistoryView(activePeriodId: currentPeriodId)
-        }
-        .onAppear { seedData() }
+private class PreviewTransactionRepository: TransactionRepository {
+    let currentPeriodId: UUID
+    let pastPeriodId: UUID
+
+    init(currentPeriodId: UUID, pastPeriodId: UUID) {
+        self.currentPeriodId = currentPeriodId
+        self.pastPeriodId = pastPeriodId
     }
-    
-    private func seedData() {
+
+    func save(transaction: Transaction) async throws {}
+    func delete(transactionId: UUID) async throws {}
+    func getTransaction(id: UUID) async throws -> Transaction? { nil }
+    func getTransaction(byClientGeneratedId clientGeneratedId: String) async throws -> Transaction? { nil }
+    func getTransactions(forPeriod periodId: UUID) async throws -> [Transaction] { [] }
+    func getTransactions(forCategory categoryId: UUID) async throws -> [Transaction] { [] }
+    func getTransactions(between startDate: Date, and endDate: Date) async throws -> [Transaction] { [] }
+
+    func getAllTransactions() async throws -> [Transaction] {
         let calendar = Calendar.current
         let now = Date()
-        
+
         let currentTransactions: [(Double, String, Date)] = [
             (45.50, "Lunch", now),
             (12.00, "Coffee", now),
@@ -431,34 +447,37 @@ private struct HistoryPreview: View {
             (89.99, "Gas", calendar.date(byAdding: .day, value: -1, to: now)!),
             (15.00, "Snacks", calendar.date(byAdding: .day, value: -2, to: now)!),
         ]
-        
+
         let pastTransactions: [(Double, String, Date)] = [
             (500.00, "Rent", calendar.date(byAdding: .day, value: -35, to: now)!),
             (120.00, "Electric Bill", calendar.date(byAdding: .day, value: -36, to: now)!),
             (65.00, "Internet", calendar.date(byAdding: .day, value: -36, to: now)!),
         ]
-        
-        for (amount, category, date) in currentTransactions {
-            context.insert(TransactionEntity(
-                id: UUID(), amount: amount, createdAt: date,
+
+        let current = currentTransactions.map { amount, category, date in
+            Transaction(
+                id: UUID(), amount: Decimal(amount), createdAt: date,
                 clientGeneratedId: UUID().uuidString, periodId: currentPeriodId,
-                isDeleted: false, isIncome: false, categoryId: UUID(), categoryName: category
-            ))
+                categoryId: UUID(), categoryName: category
+            )
         }
-        
-        for (amount, category, date) in pastTransactions {
-            context.insert(TransactionEntity(
-                id: UUID(), amount: amount, createdAt: date,
+        let past = pastTransactions.map { amount, category, date in
+            Transaction(
+                id: UUID(), amount: Decimal(amount), createdAt: date,
                 clientGeneratedId: UUID().uuidString, periodId: pastPeriodId,
-                isDeleted: false, isIncome: false, categoryId: UUID(), categoryName: category
-            ))
+                categoryId: UUID(), categoryName: category
+            )
         }
-        
-        try? context.save()
+        return current + past
     }
 }
 
 #Preview {
-    HistoryPreview()
-        .modelContainer(for: TransactionEntity.self, inMemory: true)
+    let currentPeriodId = UUID()
+    let pastPeriodId = UUID()
+
+    return TopSheetContainer(isPresented: .constant(true)) {
+        HistoryView(activePeriodId: currentPeriodId)
+    }
+    .environment(\.dependencies, .preview(transactionRepository: PreviewTransactionRepository(currentPeriodId: currentPeriodId, pastPeriodId: pastPeriodId)))
 }

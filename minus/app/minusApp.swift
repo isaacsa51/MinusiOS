@@ -18,22 +18,16 @@ struct minusApp: App {
     @State private var themeManager = ThemeManager()
 
     let container: ModelContainer
-    private let txRepo: TransactionRepositoryImpl
-    private let periodRepo: PeriodReportRepositoryImpl
-    private let splitModePreferenceRepo: UserDefaultsSplitModePreferenceRepository
-    private let creditCardPreferenceRepo: UserDefaultsCreditCardPreferenceRepository
+    private let dependencies: AppDependencies
 
     init() {
-        do {
-            let schema = Schema(versionedSchema: SchemaV1.self)
-            container = try ModelContainer(for: schema, migrationPlan: MinusMigrationPlan.self)
-        } catch {
-            fatalError("Error trying to init database: \(error.localizedDescription)")
-        }
-        txRepo = TransactionRepositoryImpl(context: container.mainContext)
-        periodRepo = PeriodReportRepositoryImpl(context: container.mainContext)
-        splitModePreferenceRepo = UserDefaultsSplitModePreferenceRepository()
-        creditCardPreferenceRepo = UserDefaultsCreditCardPreferenceRepository()
+        container = ModelContainerProvider.makeContainer()
+        dependencies = AppDependencies(
+            transactionRepository: TransactionRepositoryImpl(context: container.mainContext),
+            periodRepository: PeriodReportRepositoryImpl(context: container.mainContext),
+            splitModePreferenceRepository: UserDefaultsSplitModePreferenceRepository(),
+            creditCardPreferenceRepository: UserDefaultsCreditCardPreferenceRepository()
+        )
 
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         RecurringNotificationService.requestAuthorizationIfNeeded()
@@ -53,7 +47,7 @@ struct minusApp: App {
                             case .settings:
                                 SettingsView()
                             case .history:
-                                Text("Transactions History screen...")
+                                HistoryScreen()
                             case .analytics(let periodId):
                                 AnalyticsView(periodId: periodId)
                             case .pastPeriods:
@@ -67,10 +61,7 @@ struct minusApp: App {
             .preferredColorScheme(themeManager.colorScheme)
             .environment(router)
             .environment(themeManager)
-            .environment(\.transactionRepository, txRepo)
-            .environment(\.periodRepository, periodRepo)
-            .environment(\.splitModePreferenceRepository, splitModePreferenceRepo)
-            .environment(\.creditCardPreferenceRepository, creditCardPreferenceRepo)
+            .environment(\.dependencies, dependencies)
             .modelContainer(container)
         }
     }

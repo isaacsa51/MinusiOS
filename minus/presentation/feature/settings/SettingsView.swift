@@ -10,10 +10,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.periodRepository) private var periodRepo
-    @Environment(\.transactionRepository) private var txRepo
-    @Environment(\.splitModePreferenceRepository) private var splitModePreferenceRepo
-    @Environment(\.creditCardPreferenceRepository) private var creditCardPreferenceRepo
+    @Environment(\.dependencies) private var dependencies
     @AppStorage("showPastPeriodExpenses") private var showPastPeriodExpenses = true
     @AppStorage("useCreditCardPayments") private var useCreditCardPayments = false
     @AppStorage("creditCardCutoffDay") private var creditCardCutoffDay = 0
@@ -130,12 +127,12 @@ struct SettingsView: View {
         .navigationTitle("Ajustes")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            guard viewModel == nil, let periodRepo, let txRepo, let splitModePreferenceRepo, let creditCardPreferenceRepo else { return }
+            guard viewModel == nil else { return }
             viewModel = SettingsViewModel(
-                periodRepo: periodRepo,
-                transactionRepo: txRepo,
-                splitModePreferenceRepo: splitModePreferenceRepo,
-                creditCardPreferenceRepo: creditCardPreferenceRepo
+                periodRepo: dependencies.periodRepository,
+                transactionRepo: dependencies.transactionRepository,
+                splitModePreferenceRepo: dependencies.splitModePreferenceRepository,
+                creditCardPreferenceRepo: dependencies.creditCardPreferenceRepository
             )
         }
         .sheet(isPresented: Binding(

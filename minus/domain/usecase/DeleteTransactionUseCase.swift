@@ -16,5 +16,6 @@ class DeleteTransactionUseCase {
     
     func execute(transactionId: UUID) async throws {
         try await repository.delete(transactionId: transactionId)
+        RecurringNotificationService.cancel(transactionId: transactionId)
     }
 }
