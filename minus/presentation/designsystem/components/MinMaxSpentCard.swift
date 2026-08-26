@@ -15,7 +15,6 @@ struct MinMaxSpentCard: View {
     var categoryLabel: String? = nil
     var trendValues: [Double] = []
     var highlightIndex: Int? = nil
-    var markerAnchor: TrendGraphBackground.MarkerAnchor = .end
     var tint: Color = Color.minus.primaryAction
     var textGradientEdge: TrendGraphBackground.GradientEdge? = nil
 
@@ -28,7 +27,6 @@ struct MinMaxSpentCard: View {
                 TrendGraphBackground(
                     values: trendValues,
                     highlightIndex: highlightIndex,
-                    anchor: markerAnchor,
                     tint: tint,
                     textGradientEdge: textGradientEdge
                 )
@@ -76,7 +74,6 @@ struct MinMaxSpentCard: View {
             subtitle: "01 August",
             trendValues: [40, 90, 60, 120, 340, 80, 55],
             highlightIndex: 4,
-            markerAnchor: .end,
             tint: .spendingHeat(1)
         )
         MinMaxSpentCard(
@@ -85,7 +82,6 @@ struct MinMaxSpentCard: View {
             subtitle: "28 July",
             trendValues: [40, 90, 60, 12, 340, 80, 55],
             highlightIndex: 3,
-            markerAnchor: .start,
             tint: .spendingHeat(0)
         )
         MinMaxSpentCard(
@@ -95,7 +91,6 @@ struct MinMaxSpentCard: View {
             categoryLabel: "Rent",
             trendValues: [4, 10, 200, 8, 22, 6],
             highlightIndex: 2,
-            markerAnchor: .end,
             tint: .spendingHeat(1),
             textGradientEdge: .bottom
         )
@@ -106,7 +101,6 @@ struct MinMaxSpentCard: View {
             categoryLabel: "Morning coffee",
             trendValues: [4.5, 10, 200, 8, 22, 6],
             highlightIndex: 0,
-            markerAnchor: .start,
             tint: .spendingHeat(0),
             textGradientEdge: .top
         )

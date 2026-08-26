@@ -96,7 +96,6 @@ struct AnalyticsView: View {
                             categoryLabel: viewModel.analytics.minTransaction?.categoryName,
                             trendValues: viewModel.transactionTrendValues,
                             highlightIndex: viewModel.analytics.minTransactionIndex,
-                            markerAnchor: .start,
                             tint: .spendingHeat(0),
                             textGradientEdge: .top
                         )
@@ -107,7 +106,6 @@ struct AnalyticsView: View {
                             categoryLabel: viewModel.analytics.maxTransaction?.categoryName,
                             trendValues: viewModel.transactionTrendValues,
                             highlightIndex: viewModel.analytics.maxTransactionIndex,
-                            markerAnchor: .end,
                             tint: .spendingHeat(1),
                             textGradientEdge: .bottom
                         )

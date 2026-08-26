@@ -6,13 +6,6 @@
 import SwiftUI
 
 struct TrendGraphBackground: View {
-    enum MarkerAnchor {
-        /// The highlighted point renders at the card's leading edge.
-        case start
-        /// The highlighted point renders at the card's trailing edge.
-        case end
-    }
-
     /// Which edge the text-legibility gradient (see `textGradientEdge`)
     /// concentrates at — the opposite edge fades to fully clear.
     enum GradientEdge {
@@ -22,7 +15,6 @@ struct TrendGraphBackground: View {
 
     let values: [Double]
     let highlightIndex: Int?
-    let anchor: MarkerAnchor
     let tint: Color
     /// Layers a `tint` wash on top of the graph — same color as the area
     /// fill and line, just stronger — concentrated at this edge and fading
@@ -33,26 +25,32 @@ struct TrendGraphBackground: View {
 
     private let topInset: CGFloat = 0.15
     private let baselineInset: CGFloat = 0.92
-    private let minimumPoints = 6
+    /// Points shown on each side of the highlighted one, so it always lands
+    /// dead center in the card regardless of where it falls in `values` —
+    /// zero-padded on whichever side runs out of real data first.
+    private let contextRadius = 3
 
     private var plotted: (values: [Double], highlightIndex: Int?) {
         guard let highlightIndex, values.indices.contains(highlightIndex) else {
             return (values, highlightIndex)
         }
-        switch anchor {
-        case .start:
-            var series = Array(values[highlightIndex...])
-            if series.count < minimumPoints {
-                series += Array(repeating: 0, count: minimumPoints - series.count)
-            }
-            return (series, 0)
-        case .end:
-            var series = Array(values[...highlightIndex])
-            if series.count < minimumPoints {
-                series = Array(repeating: 0, count: minimumPoints - series.count) + series
-            }
-            return (series, series.count - 1)
+
+        let lowerBound = max(0, highlightIndex - contextRadius)
+        let upperBound = min(values.count - 1, highlightIndex + contextRadius)
+        var series = Array(values[lowerBound...upperBound])
+        var centeredIndex = highlightIndex - lowerBound
+
+        let leadingPad = contextRadius - (highlightIndex - lowerBound)
+        if leadingPad > 0 {
+            series = Array(repeating: 0, count: leadingPad) + series
+            centeredIndex += leadingPad
         }
+        let trailingPad = contextRadius - (upperBound - highlightIndex)
+        if trailingPad > 0 {
+            series += Array(repeating: 0, count: trailingPad)
+        }
+
+        return (series, centeredIndex)
     }
 
     var body: some View {
@@ -166,20 +164,30 @@ private struct SmoothAreaShape: Shape {
 
 #Preview {
     VStack(spacing: 12) {
+        // Highlight at the very end of the series — still centers.
         TrendGraphBackground(
             values: [70, 45, 30, 55, 90, 18, 40, 12, 6666],
             highlightIndex: 8,
-            anchor: .end,
             tint: .spendingHeat(1)
         )
         .frame(height: 120)
         .background(Color.spendingHeat(1).opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
+        // Highlight at the very start — still centers.
         TrendGraphBackground(
             values: [33, 90, 45, 70, 12, 55, 30],
             highlightIndex: 0,
-            anchor: .start,
+            tint: .spendingHeat(0)
+        )
+        .frame(height: 120)
+        .background(Color.spendingHeat(0).opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+        // Highlight already in the middle.
+        TrendGraphBackground(
+            values: [33, 90, 45, 70, 12, 55, 30],
+            highlightIndex: 3,
             tint: .spendingHeat(0)
         )
         .frame(height: 120)
@@ -189,7 +197,6 @@ private struct SmoothAreaShape: Shape {
         TrendGraphBackground(
             values: [4.5],
             highlightIndex: 0,
-            anchor: .start,
             tint: .spendingHeat(0)
         )
         .frame(height: 120)
@@ -199,7 +206,6 @@ private struct SmoothAreaShape: Shape {
         TrendGraphBackground(
             values: [33, 90, 45, 70, 12, 55, 30],
             highlightIndex: 0,
-            anchor: .start,
             tint: .spendingHeat(0),
             textGradientEdge: .top
         )
@@ -210,7 +216,6 @@ private struct SmoothAreaShape: Shape {
         TrendGraphBackground(
             values: [70, 45, 30, 55, 90, 18, 40, 12, 6666],
             highlightIndex: 8,
-            anchor: .end,
             tint: .spendingHeat(1),
             textGradientEdge: .bottom
         )
