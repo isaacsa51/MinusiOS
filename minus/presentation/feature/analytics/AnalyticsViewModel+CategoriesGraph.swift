@@ -7,9 +7,9 @@ import Foundation
 
 extension AnalyticsViewModel {
     enum TimeRangeMode: String, CaseIterable {
-        case day = "Días"
-        case week = "Semana"
-        case biweek = "Quincena"
+        case day = "Days"
+        case week = "Week"
+        case biweek = "Biweek"
         case total = "Total"
 
         var windowDays: Int {

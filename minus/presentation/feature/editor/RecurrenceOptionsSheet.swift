@@ -13,7 +13,7 @@ struct RecurrenceOptionsSheet: View {
 
             ScrollView {
                 VStack(spacing: 24) {
-                    Text("Pago Recurrente")
+                    Text("Recurring Payment")
                         .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(Color.minus.textPrimary)
                         .padding(.top, 16)
@@ -39,7 +39,7 @@ struct RecurrenceOptionsSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Listo")
+                        Text("Done")
                             .font(.system(size: 18, weight: .bold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -76,7 +76,7 @@ struct RecurrenceOptionsSheet: View {
                     .foregroundStyle(Color.minus.textSecondary)
                     .frame(width: 24)
 
-                Text("Frecuencia")
+                Text("Frequency")
                     .font(.body)
                     .foregroundStyle(Color.minus.textPrimary)
 
@@ -98,7 +98,7 @@ struct RecurrenceOptionsSheet: View {
                 .foregroundStyle(Color.minus.textSecondary)
                 .frame(width: 24)
 
-            Text("Día del mes")
+            Text("Day of month")
                 .font(.body)
                 .foregroundStyle(Color.minus.textPrimary)
 
@@ -122,7 +122,7 @@ struct RecurrenceOptionsSheet: View {
                 .foregroundStyle(Color.minus.textSecondary)
                 .frame(width: 24)
 
-            Text("Fecha límite")
+            Text("Deadline")
                 .font(.body)
                 .foregroundStyle(Color.minus.textPrimary)
 

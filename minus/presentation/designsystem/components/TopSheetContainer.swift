@@ -63,7 +63,7 @@ struct TopSheetContainer<Content: View>: View {
 
     private var header: some View {
         HStack {
-            Text("Historial")
+            Text("History")
                 .font(.headline)
                 .foregroundStyle(Color.minus.textPrimary)
             Spacer()
@@ -72,7 +72,7 @@ struct TopSheetContainer<Content: View>: View {
                     .font(.system(size: 28))
                     .foregroundStyle(Color.minus.textSecondary)
             }
-            .accessibilityLabel("Cerrar")
+            .accessibilityLabel("Close")
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 12)

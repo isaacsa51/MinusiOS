@@ -16,8 +16,8 @@ struct AnalyticsView: View {
     var periodId: UUID? = nil
 
     private enum GraphMode: String, CaseIterable {
-        case trend = "Tendencia"
-        case categories = "Categorías"
+        case trend = "Trend"
+        case categories = "Categories"
     }
 
     private typealias TimeRangeMode = AnalyticsViewModel.TimeRangeMode

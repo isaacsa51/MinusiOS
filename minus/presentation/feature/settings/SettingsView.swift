@@ -21,9 +21,9 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            Section("Apariencia") {
+            Section("Appearance") {
                 Picker(
-                    "Tema",
+                    "Theme",
                     selection: Binding(
                         get: { themeManager.selectedMode },
                         set: { themeManager.selectedMode = $0 }
@@ -42,22 +42,22 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Text("El tema se guarda automáticamente y se aplica en toda la app.")
+                Text("The theme saves automatically and applies across the app.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Historial") {
-                Toggle("Mostrar gastos de periodos anteriores", isOn: $showPastPeriodExpenses)
+            Section("History") {
+                Toggle("Show past period expenses", isOn: $showPastPeriodExpenses)
                     .tint(Color.minus.primaryAction)
 
-                Text("Muestra u oculta los gastos de periodos de presupuesto pasados en el historial.")
+                Text("Shows or hides past budget periods' expenses in the history.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Tarjeta de crédito") {
-                Toggle("Uso de pagos con tarjeta de crédito", isOn: $useCreditCardPayments)
+            Section("Credit Card") {
+                Toggle("Use credit card payments", isOn: $useCreditCardPayments)
                     .tint(Color.minus.primaryAction)
 
                 if useCreditCardPayments {
@@ -66,26 +66,26 @@ struct SettingsView: View {
                         showCutoffPrompt = true
                     } label: {
                         HStack {
-                            Text("Día de corte")
+                            Text("Cutoff day")
                                 .foregroundStyle(Color.minus.textPrimary)
                             Spacer()
-                            Text(creditCardCutoffDay > 0 ? "\(creditCardCutoffDay)" : "Sin definir")
+                            Text(creditCardCutoffDay > 0 ? "\(creditCardCutoffDay)" : "Not set")
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
 
-                Text("Marca tus gastos como pagos con tarjeta de crédito desde el numpad y lleva el seguimiento según el día de corte.")
+                Text("Mark your expenses as credit card charges from the numpad and track them by cutoff day.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Datos") {
+            Section("Data") {
                 Button {
                     Task { await viewModel?.exportCSV() }
                 } label: {
                     HStack {
-                        Label("Exportar backup en CSV", systemImage: "square.and.arrow.up")
+                        Label("Export CSV backup", systemImage: "square.and.arrow.up")
                         if viewModel?.isExporting == true {
                             Spacer()
                             ProgressView()
@@ -98,7 +98,7 @@ struct SettingsView: View {
                     showFileImporter = true
                 } label: {
                     HStack {
-                        Label("Importar backup CSV", systemImage: "square.and.arrow.down")
+                        Label("Import CSV backup", systemImage: "square.and.arrow.down")
                         if viewModel?.isImporting == true {
                             Spacer()
                             ProgressView()
@@ -119,12 +119,12 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text("Exporta o importa tus transacciones, pagos recurrentes y los datos del periodo de presupuesto en formato CSV, compatible con la app de Android.")
+                Text("Export or import your transactions, recurring payments, and budget period data in CSV format, compatible with the Android app.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Ajustes")
+        .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard viewModel == nil else { return }
@@ -155,17 +155,17 @@ struct SettingsView: View {
                 }
             }
         )
-        .alert("Día de corte de tu tarjeta", isPresented: $showCutoffPrompt) {
-            TextField("Día del mes (1-31)", text: $cutoffDayInput)
+        .alert("Your card's cutoff day", isPresented: $showCutoffPrompt) {
+            TextField("Day of month (1-31)", text: $cutoffDayInput)
                 .keyboardType(.numberPad)
-            Button("Guardar") {
+            Button("Save") {
                 if let day = Int(cutoffDayInput), (1...31).contains(day) {
                     creditCardCutoffDay = day
                 }
             }
-            Button("Cancelar", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Indica el día del mes en el que corta tu tarjeta de crédito.")
+            Text("Enter the day of the month your credit card cuts off.")
         }
     }
 }

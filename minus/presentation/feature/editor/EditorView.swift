@@ -83,7 +83,7 @@ struct EditorView: View {
                                 isShowingBudgetDetailsSheet = true
                             }) {
                                 BudgetPillView(
-                                    title: budgetVM?.pillTitle ?? "Cargando...",
+                                    title: budgetVM?.pillTitle ?? "Loading...",
                                     amount: budgetVM?.pillAmount ?? "...",
                                     pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary,
                                     progress: budgetVM?.spendingProgress ?? 0,
@@ -284,19 +284,19 @@ struct EditorView: View {
         } message: {
             Text(viewModel?.errorMessage ?? "")
         }
-        .alert("Día de corte de tu tarjeta", isPresented: $showCreditCardCutoffPrompt) {
-            TextField("Día del mes (1-31)", text: $creditCardCutoffDayInput)
+        .alert("Your card's cutoff day", isPresented: $showCreditCardCutoffPrompt) {
+            TextField("Day of month (1-31)", text: $creditCardCutoffDayInput)
                 .keyboardType(.numberPad)
-            Button("Guardar") {
+            Button("Save") {
                 if let day = Int(creditCardCutoffDayInput), (1...31).contains(day) {
                     creditCardCutoffDay = day
                 }
             }
-            Button("Cancelar", role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 viewModel?.isCreditCardCharge = false
             }
         } message: {
-            Text("Indica el día del mes en el que corta tu tarjeta de crédito para llevar el seguimiento de este gasto.")
+            Text("Enter the day of the month your credit card cuts off, to track this expense.")
         }
     }
 

@@ -399,7 +399,7 @@ private struct PastPeriodDivider: View {
             HStack(spacing: 12) {
                 line
                 HStack(spacing: 6) {
-                    Text(isExpanded ? "Ocultar periodos anteriores" : "Ver periodos anteriores")
+                    Text(isExpanded ? "Hide past periods" : "View past periods")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.minus.textSecondary)
                 }
