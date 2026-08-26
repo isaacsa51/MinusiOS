@@ -61,8 +61,8 @@ class AnalyticsViewModel {
         Self.dayFormatter.string(from: date)
     }
 
-    func formattedDateTime(_ date: Date) -> String {
-        Self.dateTimeFormatter.string(from: date)
+    func formattedDate(_ date: Date) -> String {
+        Self.transactionDateFormatter.string(from: date)
     }
 
     func percentageLabel(_ fraction: Double) -> String {
@@ -188,9 +188,9 @@ class AnalyticsViewModel {
         return formatter
     }()
 
-    private static let dateTimeFormatter: DateFormatter = {
+    private static let transactionDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM h:mm a"
+        formatter.dateFormat = "dd MMMM"
         formatter.locale = Locale(identifier: "en_US")
         return formatter
     }()

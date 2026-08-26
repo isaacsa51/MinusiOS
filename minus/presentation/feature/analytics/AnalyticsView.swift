@@ -65,25 +65,27 @@ struct AnalyticsView: View {
                     dailyAverageCard(viewModel)
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        AnalyticsStatTile(
+                        MinMaxSpentCard(
                             title: "Smallest Expense",
                             value: viewModel.analytics.minTransaction.map { viewModel.formattedAmount($0.amount) } ?? "--",
-                            subtitle: viewModel.analytics.minTransaction.map { viewModel.formattedDateTime($0.createdAt) },
+                            subtitle: viewModel.analytics.minTransaction.map { viewModel.formattedDate($0.createdAt) },
                             categoryLabel: viewModel.analytics.minTransaction?.categoryName,
                             trendValues: viewModel.transactionTrendValues,
                             highlightIndex: viewModel.analytics.minTransactionIndex,
                             markerAnchor: .start,
-                            tint: .spendingHeat(0)
+                            tint: .spendingHeat(0),
+                            textGradientEdge: .top
                         )
-                        AnalyticsStatTile(
+                        MinMaxSpentCard(
                             title: "Largest Expense",
                             value: viewModel.analytics.maxTransaction.map { viewModel.formattedAmount($0.amount) } ?? "--",
-                            subtitle: viewModel.analytics.maxTransaction.map { viewModel.formattedDateTime($0.createdAt) },
+                            subtitle: viewModel.analytics.maxTransaction.map { viewModel.formattedDate($0.createdAt) },
                             categoryLabel: viewModel.analytics.maxTransaction?.categoryName,
                             trendValues: viewModel.transactionTrendValues,
                             highlightIndex: viewModel.analytics.maxTransactionIndex,
                             markerAnchor: .end,
-                            tint: .spendingHeat(1)
+                            tint: .spendingHeat(1),
+                            textGradientEdge: .bottom
                         )
                     }
 

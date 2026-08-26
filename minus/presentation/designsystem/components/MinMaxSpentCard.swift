@@ -1,12 +1,12 @@
 //
-//  AnalyticsStatTile.swift
+//  MinMaxSpentCard.swift
 //  minus
 //
 
 import SwiftUI
 import SwiftThemeKit
 
-struct AnalyticsStatTile: View {
+struct MinMaxSpentCard: View {
     @Environment(\.appTheme) private var theme
 
     let title: String
@@ -17,6 +17,7 @@ struct AnalyticsStatTile: View {
     var highlightIndex: Int? = nil
     var markerAnchor: TrendGraphBackground.MarkerAnchor = .end
     var tint: Color = Color.minus.primaryAction
+    var textGradientEdge: TrendGraphBackground.GradientEdge? = nil
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -28,11 +29,12 @@ struct AnalyticsStatTile: View {
                     values: trendValues,
                     highlightIndex: highlightIndex,
                     anchor: markerAnchor,
-                    tint: tint
+                    tint: tint,
+                    textGradientEdge: textGradientEdge
                 )
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(value)
                     .font(.displaySmall)
                     .foregroundStyle(Color.minus.textPrimary)
@@ -44,7 +46,7 @@ struct AnalyticsStatTile: View {
                     .foregroundStyle(Color.minus.textSecondary)
 
                 if let subtitle {
-                    Text(subtitle)
+                    Label(subtitle, systemImage: "calendar")
                         .font(.labelSmall)
                         .foregroundStyle(Color.minus.textSecondary)
                         .lineLimit(1)
@@ -58,7 +60,8 @@ struct AnalyticsStatTile: View {
                         .lineLimit(1)
                 }
             }
-            .padding(.lg)
+            .padding(.vertical, .lg)
+            .padding(.horizontal, .md)
         }
         .frame(minHeight: 140)
         .clipRadius(.xl, style: .continuous)
@@ -67,43 +70,45 @@ struct AnalyticsStatTile: View {
 
 #Preview {
     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-        AnalyticsStatTile(
+        MinMaxSpentCard(
             title: "Highest Day",
             value: "$340.00",
-            subtitle: "Sat, Aug 1",
+            subtitle: "01 August",
             trendValues: [40, 90, 60, 120, 340, 80, 55],
             highlightIndex: 4,
             markerAnchor: .end,
             tint: .spendingHeat(1)
         )
-        AnalyticsStatTile(
+        MinMaxSpentCard(
             title: "Lowest Day",
             value: "$12.00",
-            subtitle: "Tue, Jul 28",
+            subtitle: "28 July",
             trendValues: [40, 90, 60, 12, 340, 80, 55],
             highlightIndex: 3,
             markerAnchor: .start,
             tint: .spendingHeat(0)
         )
-        AnalyticsStatTile(
+        MinMaxSpentCard(
             title: "Largest Expense",
             value: "$200.00",
-            subtitle: "25 Jun 3:30 PM",
+            subtitle: "12 August",
             categoryLabel: "Rent",
             trendValues: [4, 10, 200, 8, 22, 6],
             highlightIndex: 2,
             markerAnchor: .end,
-            tint: .spendingHeat(1)
+            tint: .spendingHeat(1),
+            textGradientEdge: .bottom
         )
-        AnalyticsStatTile(
+        MinMaxSpentCard(
             title: "Smallest Expense",
             value: "$4.50",
-            subtitle: "25 Jun 3:30 PM",
+            subtitle: "06 July",
             categoryLabel: "Morning coffee",
             trendValues: [4.5, 10, 200, 8, 22, 6],
             highlightIndex: 0,
             markerAnchor: .start,
-            tint: .spendingHeat(0)
+            tint: .spendingHeat(0),
+            textGradientEdge: .top
         )
     }
     .padding()

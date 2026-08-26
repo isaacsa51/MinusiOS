@@ -13,10 +13,23 @@ struct TrendGraphBackground: View {
         case end
     }
 
+    /// Which edge the text-legibility gradient (see `textGradientEdge`)
+    /// concentrates at — the opposite edge fades to fully clear.
+    enum GradientEdge {
+        case top
+        case bottom
+    }
+
     let values: [Double]
     let highlightIndex: Int?
     let anchor: MarkerAnchor
     let tint: Color
+    /// Layers a `tint` wash on top of the graph — same color as the area
+    /// fill and line, just stronger — concentrated at this edge and fading
+    /// to clear at the opposite one, so text placed over that edge (by the
+    /// caller) stays legible without the graph's own drawing changing at
+    /// all. `nil` (the default) renders no wash.
+    var textGradientEdge: GradientEdge? = nil
 
     private let topInset: CGFloat = 0.15
     private let baselineInset: CGFloat = 0.92
@@ -71,6 +84,15 @@ struct TrendGraphBackground: View {
                         .fill(tint)
                         .frame(width: 8, height: 8)
                         .position(point)
+                }
+
+                if let textGradientEdge {
+                    LinearGradient(
+                        colors: [tint.opacity(0.5), tint.opacity(0.2), .clear],
+                        startPoint: textGradientEdge == .top ? .top : .bottom,
+                        endPoint: textGradientEdge == .top ? .bottom : .top
+                    )
+                    .allowsHitTesting(false)
                 }
             }
         }
@@ -172,6 +194,28 @@ private struct SmoothAreaShape: Shape {
         )
         .frame(height: 120)
         .background(Color.spendingHeat(0).opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+        TrendGraphBackground(
+            values: [33, 90, 45, 70, 12, 55, 30],
+            highlightIndex: 0,
+            anchor: .start,
+            tint: .spendingHeat(0),
+            textGradientEdge: .top
+        )
+        .frame(height: 120)
+        .background(Color.spendingHeat(0).opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+        TrendGraphBackground(
+            values: [70, 45, 30, 55, 90, 18, 40, 12, 6666],
+            highlightIndex: 8,
+            anchor: .end,
+            tint: .spendingHeat(1),
+            textGradientEdge: .bottom
+        )
+        .frame(height: 120)
+        .background(Color.spendingHeat(1).opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
     .padding()
