@@ -2,25 +2,6 @@
 //  SpendingHeatmapCalendar.swift
 //  minus
 //
-//  A month-grid calendar (weekday columns, week rows) spanning the active
-//  budget period. Each day cell is colored by that day's spend relative to
-//  the period's hottest day — green (low) through red (high) — via
-//  Color.spendingHeat. Every cell gets a subtle outline so empty (no-spend)
-//  days stay visible against the card; today's outline is stronger, and the
-//  single hottest day renders oversized, overlapping its neighbors. Owns its
-//  own card chrome (padding/background/corner radius) — callers just place it.
-//
-//  When the period spans more than one calendar month, it renders as one
-//  section per month (own label, own weekday header), each padded out to
-//  full weeks: days that belong to that month but fall outside the period
-//  render dimmed rather than dropped, so the boundary week never looks cut
-//  off; days that belong to an adjacent month are blank, since that month
-//  gets its own section instead of sharing the row.
-//
-//  Deliberately plain LazyVGrid rather than Swift Charts: this is a calendar
-//  grid, not really "a chart," and LazyVGrid's GridItem(.flexible()) sizes
-//  and aligns every cell natively — no manual width measurement, no plot-area
-//  margins to account for, nothing to get subtly wrong.
 
 import SwiftUI
 
@@ -61,9 +42,6 @@ struct SpendingHeatmapCalendar: View {
         dailyTotals.map(\.amount).max() ?? 0
     }
 
-    /// A day-grid slot: `blank` belongs to a neighboring month (rendered in
-    /// its own section instead), `dimmed` belongs to this section's month but
-    /// falls outside the period, `real` is an actual in-period day.
     private enum GridSlot {
         case blank
         case dimmed(Date)
@@ -158,8 +136,6 @@ struct SpendingHeatmapCalendar: View {
                             dayCell(slot)
                         }
                     }
-                    // Extra breathing room above row 0 so the hottest day's oversized
-                    // cell (below) can bleed upward without touching the header row.
                     .padding(.top, 8)
                 }
             }

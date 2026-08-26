@@ -38,6 +38,13 @@ class AnalyticsViewModel {
             } else {
                 analytics = .empty
             }
+
+            // Only the active period (periodId == nil means "load whatever's
+            // active") should drive the widget — browsing a past period here
+            // shouldn't overwrite it with stale history.
+            if periodId == nil {
+                SpendingHeatmapSnapshotWriter.refresh(period: period, expenses: analytics.expenses)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

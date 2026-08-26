@@ -31,38 +31,21 @@ struct BudgetOverviewProvider: TimelineProvider {
     }
 
     private func currentEntry() -> BudgetOverviewEntry {
-        BudgetOverviewSnapshotStore.readEntry() ?? .empty
-    }
-}
-
-private struct BudgetOverviewSnapshot: Codable {
-    let totalBudget: Double
-    let currencySymbol: String
-    let startDate: Date
-    let endDate: Date
-}
-
-private enum BudgetOverviewSnapshotStore {
-    private static let suiteName = "group.com.serranoie.ios.minus"
-    private static let key = "budgetOverviewSnapshot"
-
-    static func readEntry() -> BudgetOverviewEntry? {
-        guard let defaults = UserDefaults(suiteName: suiteName),
-              let data = defaults.data(forKey: key),
-              let snapshot = try? JSONDecoder().decode(BudgetOverviewSnapshot.self, from: data) else {
-            return nil
-        }
+        guard let data = BudgetOverviewSnapshotStore.read() else { return .empty }
         return BudgetOverviewEntry(
             date: .now,
-            totalBudget: Decimal(snapshot.totalBudget),
-            currencySymbol: snapshot.currencySymbol,
-            startDate: snapshot.startDate,
-            endDate: snapshot.endDate
+            totalBudget: Decimal(data.totalBudget),
+            currencySymbol: data.currencySymbol,
+            startDate: data.startDate,
+            endDate: data.endDate
         )
     }
 }
 
-private extension BudgetOverviewEntry {
+extension BudgetOverviewEntry {
+    // Internal (not file-private) so preview code elsewhere — e.g. the
+    // consolidated widget gallery preview in MinusWidgetBundle.swift — can
+    // reuse the same mock data instead of duplicating it.
     static var sample: BudgetOverviewEntry {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
@@ -76,7 +59,7 @@ private extension BudgetOverviewEntry {
         )
     }
 
-    static var empty: BudgetOverviewEntry {
+    fileprivate static var empty: BudgetOverviewEntry {
         let today = Calendar.current.startOfDay(for: .now)
         return BudgetOverviewEntry(date: .now, totalBudget: 0, currencySymbol: "$", startDate: today, endDate: today)
     }
@@ -86,7 +69,7 @@ struct BudgetOverviewEntryView: View {
     var entry: BudgetOverviewProvider.Entry
     @Environment(\.colorScheme) private var colorScheme
 
-    private var palette: OverviewPalette { colorScheme == .dark ? .dark : .light }
+    private var palette: WidgetPalette { colorScheme == .dark ? .dark : .light }
 
     private var formattedAmount: String {
         let formatter = NumberFormatter()
@@ -102,7 +85,7 @@ struct BudgetOverviewEntryView: View {
     private static let dateFormatter: DateFormatter = {
         let fmt = DateFormatter()
         fmt.dateFormat = "d MMM"
-        fmt.locale = Locale(identifier: "en_US")
+        fmt.locale = Locale.autoupdatingCurrent
         return fmt
     }()
 
@@ -114,7 +97,7 @@ struct BudgetOverviewEntryView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
-            Text("Total budget")
+            Text(String(localized: "Total budget"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(palette.textSecondary)
 
@@ -157,24 +140,6 @@ private struct ArrowLine: Shape {
     }
 }
 
-private struct OverviewPalette {
-    let background: Color
-    let textPrimary: Color
-    let textSecondary: Color
-
-    static let light = OverviewPalette(
-        background: Color(red: 0.9647, green: 0.9451, blue: 0.8941),   // #F6F1E4
-        textPrimary: Color(red: 0.1059, green: 0.1059, blue: 0.0902),  // #1B1B17
-        textSecondary: Color(red: 0.4784, green: 0.4667, blue: 0.4275) // #7A776D
-    )
-
-    static let dark = OverviewPalette(
-        background: Color(red: 0.1059, green: 0.1059, blue: 0.0902),   // #1B1B17
-        textPrimary: Color(red: 0.9647, green: 0.9451, blue: 0.8941),  // #F6F1E4
-        textSecondary: Color(red: 0.6039, green: 0.5882, blue: 0.5412) // #9A968A
-    )
-}
-
 struct BudgetOverviewWidget: Widget {
     let kind: String = "BudgetOverview"
 
@@ -182,8 +147,8 @@ struct BudgetOverviewWidget: Widget {
         StaticConfiguration(kind: kind, provider: BudgetOverviewProvider()) { entry in
             BudgetOverviewEntryView(entry: entry)
         }
-        .configurationDisplayName("Budget Overview")
-        .description("Shows your total budget and its date range.")
+        .configurationDisplayName(String(localized: "Budget Overview"))
+        .description(String(localized: "Shows your total budget and its date range."))
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

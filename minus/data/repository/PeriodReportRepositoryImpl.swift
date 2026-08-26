@@ -32,7 +32,7 @@ class PeriodReportRepositoryImpl: PeriodRepository {
 
         context.insert(entity)
         try context.save()
-        BudgetOverviewSnapshotWriter.refresh(activePeriod: try? await getActivePeriod())
+        await refreshWidgets()
     }
 
     func getPeriod(id: UUID) async throws -> PeriodKey? {
@@ -87,8 +87,17 @@ class PeriodReportRepositoryImpl: PeriodRepository {
         if let entity = try context.fetch(descriptor).first {
             entity.endDate = finalEndDate
             try context.save()
-            BudgetOverviewSnapshotWriter.refresh(activePeriod: try? await getActivePeriod())
+            await refreshWidgets()
         }
+    }
+
+    // A freshly created period has no transactions yet, so the heatmap resets to
+    // empty here; AnalyticsViewModel.load() writes the real expenses once the
+    // user actually views the calendar for this period.
+    private func refreshWidgets() async {
+        let active = try? await getActivePeriod()
+        BudgetOverviewSnapshotWriter.refresh(activePeriod: active)
+        SpendingHeatmapSnapshotWriter.refresh(period: active, expenses: [])
     }
 
     private func mapToDomain(_ entity: PeriodEntity) -> PeriodKey {

@@ -23,8 +23,9 @@ struct minusApp: App {
     init() {
         container = ModelContainerProvider.makeContainer()
         let periodRepository = PeriodReportRepositoryImpl(context: container.mainContext)
+        let transactionRepository = TransactionRepositoryImpl(context: container.mainContext)
         dependencies = AppDependencies(
-            transactionRepository: TransactionRepositoryImpl(context: container.mainContext),
+            transactionRepository: transactionRepository,
             periodRepository: periodRepository,
             splitModePreferenceRepository: UserDefaultsSplitModePreferenceRepository(),
             creditCardPreferenceRepository: UserDefaultsCreditCardPreferenceRepository()
@@ -33,8 +34,19 @@ struct minusApp: App {
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         RecurringNotificationService.requestAuthorizationIfNeeded()
 
+        // Self-heals both widget snapshots for state that already existed before
+        // this sync existed, or if a reload was ever missed — not just on mutation.
         Task { @MainActor in
-            BudgetOverviewSnapshotWriter.refresh(activePeriod: try? await periodRepository.getActivePeriod())
+            let active = try? await periodRepository.getActivePeriod()
+            BudgetOverviewSnapshotWriter.refresh(activePeriod: active)
+
+            guard let active else {
+                SpendingHeatmapSnapshotWriter.refresh(period: nil, expenses: [])
+                return
+            }
+            let analytics = try? await GetPeriodAnalyticsUseCase(transactionRepository: transactionRepository)
+                .execute(periodId: active.id)
+            SpendingHeatmapSnapshotWriter.refresh(period: active, expenses: analytics?.expenses ?? [])
         }
     }
 
