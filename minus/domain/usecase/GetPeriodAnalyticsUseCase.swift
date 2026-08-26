@@ -49,7 +49,8 @@ class GetPeriodAnalyticsUseCase {
             maxDayIndex: maxDayIndex,
             categoryBreakdown: Self.categoryBreakdown(from: expenses, totalSpent: totalSpent),
             recurringSpent: recurringSpent,
-            oneTimeSpent: totalSpent - recurringSpent
+            oneTimeSpent: totalSpent - recurringSpent,
+            expenses: expenses
         )
     }
 

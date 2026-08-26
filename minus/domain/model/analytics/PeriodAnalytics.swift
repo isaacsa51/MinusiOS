@@ -50,6 +50,12 @@ struct PeriodAnalytics {
     let recurringSpent: Decimal
     let oneTimeSpent: Decimal
 
+    /// Chronological, non-income — the same list every other field above was
+    /// derived from. Kept around for presentation-layer bucketing that needs
+    /// per-transaction data (category + timestamp together), like the
+    /// per-day-per-category stacked graph.
+    let expenses: [Transaction]
+
     static let empty = PeriodAnalytics(
         totalSpent: 0,
         transactionCount: 0,
@@ -65,6 +71,7 @@ struct PeriodAnalytics {
         maxDayIndex: nil,
         categoryBreakdown: [],
         recurringSpent: 0,
-        oneTimeSpent: 0
+        oneTimeSpent: 0,
+        expenses: []
     )
 }
