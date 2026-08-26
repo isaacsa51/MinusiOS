@@ -17,9 +17,7 @@ struct BudgetPillView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Capsule()
-                    .fill(pillColor.opacity(0.15))
-
+                // Progress fill
                 Capsule()
                     .fill(pillColor.opacity(0.35))
                     .frame(width: geo.size.width * min(CGFloat(progress), 1.0))
@@ -51,6 +49,7 @@ struct BudgetPillView: View {
             }
         }
         .frame(height: 44)
+        .glassEffect(.regular.tint(pillColor.opacity(0.15)).interactive(), in: Capsule())
         .animation(.easeInOut(duration: 0.3), value: progress)
     }
 }
