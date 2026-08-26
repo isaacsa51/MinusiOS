@@ -87,7 +87,7 @@ struct AnalyticsView: View {
                         )
                     }
 
-                    heatmapCard(period: period, dailyTotals: viewModel.analytics.dailyTotals)
+                    SpendingHeatmapCalendar(period: period, dailyTotals: viewModel.analytics.dailyTotals)
 
                     categoryBreakdownCard(viewModel)
 
@@ -100,13 +100,6 @@ struct AnalyticsView: View {
         } else {
             emptyState(message: "No spending recorded for this period yet.")
         }
-    }
-
-    private func heatmapCard(period: PeriodKey, dailyTotals: [DailyTotal]) -> some View {
-        SpendingHeatmapCalendar(period: period, dailyTotals: dailyTotals)
-            .padding(20)
-            .background(Color.minus.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func totalTrendCard(_ viewModel: AnalyticsViewModel) -> some View {
@@ -129,7 +122,7 @@ struct AnalyticsView: View {
             }
 
             CumulativeSpendChart(
-                values: viewModel.totalTrendValues,
+                points: viewModel.totalTrendPoints,
                 startLabel: viewModel.totalTrendStartLabel,
                 endLabel: viewModel.totalTrendEndLabel,
                 peakLabel: viewModel.totalTrendPeakLabel

@@ -5,8 +5,22 @@
 //  A month-grid calendar (weekday columns, week rows) spanning the active
 //  budget period. Each day cell is colored by that day's spend relative to
 //  the period's hottest day — green (low) through red (high) — via
-//  Color.spendingHeat. Days with no recorded spending stay surface-colored
-//  rather than reading as "zero," and today gets an outline.
+//  Color.spendingHeat. Every cell gets a subtle outline so empty (no-spend)
+//  days stay visible against the card; today's outline is stronger, and the
+//  single hottest day renders oversized, overlapping its neighbors. Owns its
+//  own card chrome (padding/background/corner radius) — callers just place it.
+//
+//  When the period spans more than one calendar month, it renders as one
+//  section per month (own label, own weekday header), each padded out to
+//  full weeks: days that belong to that month but fall outside the period
+//  render dimmed rather than dropped, so the boundary week never looks cut
+//  off; days that belong to an adjacent month are blank, since that month
+//  gets its own section instead of sharing the row.
+//
+//  Deliberately plain LazyVGrid rather than Swift Charts: this is a calendar
+//  grid, not really "a chart," and LazyVGrid's GridItem(.flexible()) sizes
+//  and aligns every cell natively — no manual width measurement, no plot-area
+//  margins to account for, nothing to get subtly wrong.
 
 import SwiftUI
 
@@ -47,31 +61,75 @@ struct SpendingHeatmapCalendar: View {
         dailyTotals.map(\.amount).max() ?? 0
     }
 
-    private var monthLabel: String {
-        let startMonth = Self.monthFormatter.string(from: periodStart)
-        let endMonth = Self.monthFormatter.string(from: periodEnd)
-        return startMonth == endMonth ? startMonth : "\(startMonth) \u{2013} \(endMonth)"
+    /// A day-grid slot: `blank` belongs to a neighboring month (rendered in
+    /// its own section instead), `dimmed` belongs to this section's month but
+    /// falls outside the period, `real` is an actual in-period day.
+    private enum GridSlot {
+        case blank
+        case dimmed(Date)
+        case real(Date)
     }
 
-    /// Flat list of grid cells, weekday-aligned; padding cells outside the
-    /// period's own range are `nil` so `LazyVGrid` still wraps every 7 into
-    /// a full week row.
-    private var gridDays: [Date?] {
+    private struct MonthSection: Identifiable {
+        let id: Date
+        let label: String
+        let slots: [GridSlot]
+    }
+
+    private func weekStart(of date: Date) -> Date {
         let cal = Self.calendar
+        let offset = (cal.component(.weekday, from: date) - cal.firstWeekday + 7) % 7
+        return cal.date(byAdding: .day, value: -offset, to: date) ?? date
+    }
 
-        let startOffset = (cal.component(.weekday, from: periodStart) - cal.firstWeekday + 7) % 7
-        let gridStart = cal.date(byAdding: .day, value: -startOffset, to: periodStart) ?? periodStart
+    private func weekEnd(of date: Date) -> Date {
+        let cal = Self.calendar
+        let offset = 6 - ((cal.component(.weekday, from: date) - cal.firstWeekday + 7) % 7)
+        return cal.date(byAdding: .day, value: offset, to: date) ?? date
+    }
 
-        let endOffset = 6 - ((cal.component(.weekday, from: periodEnd) - cal.firstWeekday + 7) % 7)
-        let gridEnd = cal.date(byAdding: .day, value: endOffset, to: periodEnd) ?? periodEnd
-
-        var days: [Date?] = []
-        var cursor = gridStart
-        while cursor <= gridEnd {
-            days.append(cursor >= periodStart && cursor <= periodEnd ? cursor : nil)
-            cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? gridEnd.addingTimeInterval(1)
+    private var monthSections: [MonthSection] {
+        let cal = Self.calendar
+        guard let periodStartMonth = cal.dateInterval(of: .month, for: periodStart)?.start,
+              let periodEndMonth = cal.dateInterval(of: .month, for: periodEnd)?.start else {
+            return []
         }
-        return days
+
+        var sections: [MonthSection] = []
+        var monthCursor = periodStartMonth
+
+        while monthCursor <= periodEndMonth {
+            guard let monthInterval = cal.dateInterval(of: .month, for: monthCursor) else { break }
+            let firstOfMonth = monthInterval.start
+            let lastOfMonth = cal.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
+
+            let sectionStart = max(periodStart, firstOfMonth)
+            let sectionEnd = min(periodEnd, lastOfMonth)
+
+            var slots: [GridSlot] = []
+            var cursor = weekStart(of: sectionStart)
+            let gridEnd = weekEnd(of: sectionEnd)
+            while cursor <= gridEnd {
+                let belongsToThisMonth = cal.dateInterval(of: .month, for: cursor)?.start == firstOfMonth
+                if belongsToThisMonth {
+                    slots.append(cursor >= periodStart && cursor <= periodEnd ? .real(cursor) : .dimmed(cursor))
+                } else {
+                    slots.append(.blank)
+                }
+                cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? gridEnd.addingTimeInterval(1)
+            }
+
+            sections.append(MonthSection(
+                id: firstOfMonth,
+                label: Self.monthFormatter.string(from: firstOfMonth),
+                slots: slots
+            ))
+
+            guard let nextMonth = cal.date(byAdding: .month, value: 1, to: monthCursor) else { break }
+            monthCursor = nextMonth
+        }
+
+        return sections
     }
 
     private var columns: [GridItem] {
@@ -79,33 +137,66 @@ struct SpendingHeatmapCalendar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(monthLabel)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color.minus.textPrimary)
+        VStack(alignment: .leading, spacing: 20) {
+            ForEach(monthSections) { section in
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(section.label)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.minus.textPrimary)
 
-            LazyVGrid(columns: columns, spacing: 6) {
-                ForEach(Array(Self.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
-                    Text(symbol)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.minus.textSecondary)
-                }
-            }
+                    LazyVGrid(columns: columns, spacing: 6) {
+                        ForEach(Array(Self.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
+                            Text(symbol)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Color.minus.textSecondary)
+                        }
+                    }
 
-            LazyVGrid(columns: columns, spacing: 6) {
-                ForEach(Array(gridDays.enumerated()), id: \.offset) { _, day in
-                    dayCell(for: day)
+                    LazyVGrid(columns: columns, spacing: 6) {
+                        ForEach(Array(section.slots.enumerated()), id: \.offset) { _, slot in
+                            dayCell(slot)
+                        }
+                    }
+                    // Extra breathing room above row 0 so the hottest day's oversized
+                    // cell (below) can bleed upward without touching the header row.
+                    .padding(.top, 8)
                 }
             }
         }
+        .padding(20)
+        .background(Color.minus.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     @ViewBuilder
-    private func dayCell(for day: Date?) -> some View {
-        if let day {
+    private func dayCell(_ slot: GridSlot) -> some View {
+        switch slot {
+        case .blank:
+            Color.clear
+                .aspectRatio(1, contentMode: .fit)
+
+        case .dimmed(let day):
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.clear)
+                .aspectRatio(1, contentMode: .fit)
+                .overlay(
+                    Text("\(Self.calendar.component(.day, from: day))")
+                        .font(.system(size: 10, weight: .medium))
+                        .italic()
+                        .foregroundStyle(Color.minus.textSecondary.opacity(0.6))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.minus.divider, lineWidth: 1)
+                )
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityLabel(for: day, amount: nil))
+
+        case .real(let day):
             let amount = amountByDay[day]
             let isToday = Self.calendar.isDateInToday(day)
+            let isHottestDay = maxDailyAmount > 0 && amount == maxDailyAmount
 
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(fillColor(for: amount))
@@ -117,13 +208,15 @@ struct SpendingHeatmapCalendar: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(Color.minus.textPrimary, lineWidth: isToday ? 2 : 0)
+                        .stroke(
+                            isToday ? Color.minus.textPrimary : Color.minus.divider,
+                            lineWidth: isToday ? 2 : 1
+                        )
                 )
+                .scaleEffect(isHottestDay ? 1.3 : 1)
+                .zIndex(isHottestDay ? 1 : 0)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(accessibilityLabel(for: day, amount: amount))
-        } else {
-            Color.clear
-                .aspectRatio(1, contentMode: .fit)
         }
     }
 

@@ -120,8 +120,8 @@ class AnalyticsViewModel {
         return buckets
     }
 
-    var totalTrendValues: [Double] {
-        cumulativeBuckets.map { NSDecimalNumber(decimal: $0.total).doubleValue }
+    var totalTrendPoints: [CumulativeSpendPoint] {
+        cumulativeBuckets.map { CumulativeSpendPoint(date: $0.date, total: NSDecimalNumber(decimal: $0.total).doubleValue) }
     }
 
     var totalTrendStartLabel: String {
