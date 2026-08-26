@@ -20,21 +20,7 @@ struct AnalyticsView: View {
         case categories = "Categorías"
     }
 
-    private enum TimeRangeMode: String, CaseIterable {
-        case day = "Días"
-        case week = "Semana"
-        case biweek = "Quincena"
-        case total = "Total"
-
-        var windowDays: Int {
-            switch self {
-            case .day: return 1
-            case .week: return 7
-            case .biweek: return 14
-            case .total: return 0
-            }
-        }
-    }
+    private typealias TimeRangeMode = AnalyticsViewModel.TimeRangeMode
 
     var body: some View {
         Group {
@@ -158,7 +144,7 @@ struct AnalyticsView: View {
             case .categories:
                 categoryLegend(viewModel)
                 categoriesGraph(viewModel, period: period)
-                timeRangeModeButtons(period: period)
+                timeRangeModeButtons(viewModel, period: period)
                 if timeRangeMode != .total {
                     timeRangeNavigator(viewModel, period: period)
                 }
@@ -216,80 +202,32 @@ struct AnalyticsView: View {
         }
     }
 
-    private func categoriesGraph(_ viewModel: AnalyticsViewModel, period: PeriodKey) -> some View {
-        let colors = Dictionary(uniqueKeysWithValues: viewModel.categoryOrder.enumerated().map { ($1, Color.categorical(at: $0)) })
-        let window = windowBounds(for: timeRangeMode, pageIndex: pageIndex, period: period)
-        let axisUnit: Calendar.Component = timeRangeMode == .day ? .hour : .day
+    private func categoryColors(_ viewModel: AnalyticsViewModel) -> [String: Color] {
+        Dictionary(uniqueKeysWithValues: viewModel.categoryOrder.enumerated().map { ($1, Color.categorical(at: $0)) })
+    }
 
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: Date())
-        let today: Date? = timeRangeMode == .day
-            ? nil
-            : (todayStart >= window.start && todayStart < window.end ? todayStart : nil)
+    private func categoriesGraph(_ viewModel: AnalyticsViewModel, period: PeriodKey) -> some View {
+        let data = viewModel.categoriesGraphData(mode: timeRangeMode, pageIndex: pageIndex, period: period)
 
         return StackedCategoriesGraph(
-            buckets: viewModel.categoryStackedBuckets(from: window.start, until: window.end, unit: axisUnit),
+            buckets: data.buckets,
             categoryOrder: viewModel.categoryOrder,
-            categoryColors: colors,
-            today: today,
-            axisUnit: axisUnit,
-            xDomain: window.start...window.end,
+            categoryColors: categoryColors(viewModel),
+            today: data.today,
+            axisUnit: data.axisUnit,
+            xDomain: data.xDomain,
             amountFormatter: { viewModel.formattedAmount(Decimal($0)) }
         )
         .frame(height: 220)
     }
 
-    private func totalPeriodDays(_ period: PeriodKey) -> Int {
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: period.startDate)
-        let end = calendar.startOfDay(for: period.effectiveEndDate)
-        return max(1, (calendar.dateComponents([.day], from: start, to: end).day ?? 0) + 1)
-    }
-
-    private func pageCount(for mode: TimeRangeMode, period: PeriodKey) -> Int {
-        guard mode != .total else { return 1 }
-        let totalDays = totalPeriodDays(period)
-        return max(1, Int(ceil(Double(totalDays) / Double(mode.windowDays))))
-    }
-
-    /// `end` is exclusive — the moment right after the window's last
-    /// included day — matching `categoryStackedBuckets(from:until:unit:)`'s
-    /// own convention so a window's transactions are never dropped at the
-    /// boundary.
-    private func windowBounds(for mode: TimeRangeMode, pageIndex: Int, period: PeriodKey) -> (start: Date, end: Date) {
-        let calendar = Calendar.current
-        let periodStart = calendar.startOfDay(for: period.startDate)
-        let periodEndExclusive = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: period.effectiveEndDate)) ?? periodStart
-
-        guard mode != .total else { return (periodStart, periodEndExclusive) }
-
-        let windowStart = calendar.date(byAdding: .day, value: pageIndex * mode.windowDays, to: periodStart) ?? periodStart
-        let windowEnd = min(
-            calendar.date(byAdding: .day, value: mode.windowDays, to: windowStart) ?? windowStart,
-            periodEndExclusive
-        )
-        return (windowStart, windowEnd)
-    }
-
-    private func defaultPageIndex(for mode: TimeRangeMode, period: PeriodKey) -> Int {
-        guard mode != .total else { return 0 }
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: period.startDate)
-        let today = calendar.startOfDay(for: Date())
-        let daysSinceStart = calendar.dateComponents([.day], from: start, to: today).day ?? 0
-        guard daysSinceStart >= 0 else { return 0 }
-
-        let count = pageCount(for: mode, period: period)
-        return min(daysSinceStart / mode.windowDays, count - 1)
-    }
-
-    private func timeRangeModeButtons(period: PeriodKey) -> some View {
+    private func timeRangeModeButtons(_ viewModel: AnalyticsViewModel, period: PeriodKey) -> some View {
         HStack(spacing: 8) {
             ForEach(TimeRangeMode.allCases, id: \.self) { mode in
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         timeRangeMode = mode
-                        pageIndex = defaultPageIndex(for: mode, period: period)
+                        pageIndex = viewModel.defaultPageIndex(for: mode, period: period)
                     }
                 } label: {
                     Text(mode.rawValue)
@@ -307,12 +245,7 @@ struct AnalyticsView: View {
     }
 
     private func timeRangeNavigator(_ viewModel: AnalyticsViewModel, period: PeriodKey) -> some View {
-        let count = pageCount(for: timeRangeMode, period: period)
-        let window = windowBounds(for: timeRangeMode, pageIndex: pageIndex, period: period)
-        let lastIncludedDay = Calendar.current.date(byAdding: .day, value: -1, to: window.end) ?? window.start
-        let label = timeRangeMode == .day
-            ? viewModel.dayNavigatorLabel(for: window.start)
-            : viewModel.rangeNavigatorLabel(from: window.start, to: lastIncludedDay)
+        let data = viewModel.timeRangeNavigatorData(mode: timeRangeMode, pageIndex: pageIndex, period: period)
 
         return HStack {
             Button {
@@ -326,10 +259,10 @@ struct AnalyticsView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text(label)
+                Text(data.label)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.minus.textPrimary)
-                Text("\(pageIndex + 1)/\(count)")
+                Text("\(pageIndex + 1)/\(data.pageCount)")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.minus.textSecondary)
             }
@@ -337,12 +270,12 @@ struct AnalyticsView: View {
             Spacer()
 
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { pageIndex = min(count - 1, pageIndex + 1) }
+                withAnimation(.easeInOut(duration: 0.2)) { pageIndex = min(data.pageCount - 1, pageIndex + 1) }
             } label: {
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(pageIndex < count - 1 ? Color.minus.textPrimary : Color.minus.textSecondary.opacity(0.4))
+                    .foregroundStyle(pageIndex < data.pageCount - 1 ? Color.minus.textPrimary : Color.minus.textSecondary.opacity(0.4))
             }
-            .disabled(pageIndex >= count - 1)
+            .disabled(pageIndex >= data.pageCount - 1)
         }
     }
 

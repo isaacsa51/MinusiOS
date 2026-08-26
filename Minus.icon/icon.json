@@ -1,7 +1,12 @@
 {
+  "features" : [
+    "refractivity",
+    "specular-location"
+  ],
   "fill" : "automatic",
   "groups" : [
     {
+      "blur-material" : null,
       "layers" : [
         {
           "blend-mode-specializations" : [
@@ -44,7 +49,28 @@
               140
             ]
           }
-        },
+        }
+      ],
+      "lighting" : "individual",
+      "name" : "Group",
+      "refractivity" : {
+        "depth" : 0,
+        "enabled" : true,
+        "strength" : 1
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.8
+      },
+      "specular" : "inside",
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.57
+      }
+    },
+    {
+      "blur-material" : 1,
+      "layers" : [
         {
           "fill-specializations" : [
             {
@@ -86,12 +112,19 @@
           }
         }
       ],
+      "name" : "Group",
+      "refractivity" : {
+        "depth" : 0.021171875,
+        "enabled" : true,
+        "strength" : 0.03203125
+      },
       "shadow" : {
-        "kind" : "neutral",
+        "kind" : "none",
         "opacity" : 0.5
       },
+      "specular" : "inside",
       "translucency" : {
-        "enabled" : true,
+        "enabled" : false,
         "value" : 0.3
       }
     }

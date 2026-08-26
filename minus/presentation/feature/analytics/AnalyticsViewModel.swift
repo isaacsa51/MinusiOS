@@ -79,55 +79,6 @@ class AnalyticsViewModel {
         analytics.transactionAmounts.map { NSDecimalNumber(decimal: $0).doubleValue }
     }
 
-    struct CategoryStackedBucket: Identifiable {
-        var id: Date { date }
-        let date: Date
-        let amountsByCategory: [String: Double]
-    }
-
-    /// Same names, same order as `categoryBreakdown` — the color index a
-    /// caller derives from this list (`Color.categorical(at:)`) then matches
-    /// the existing category-breakdown card for the same category.
-    var categoryOrder: [String] {
-        analytics.categoryBreakdown.map(\.name)
-    }
-
-    /// `until` is exclusive, so a window's last included moment is `until`
-    /// minus one instant — avoids dropping late-day transactions that a
-    /// same-day inclusive upper bound would silently exclude.
-    func categoryStackedBuckets(from start: Date, until end: Date, unit: Calendar.Component) -> [CategoryStackedBucket] {
-        let calendar = Calendar.current
-        let knownNames = Set(categoryOrder)
-        let inRange = analytics.expenses.filter { $0.createdAt >= start && $0.createdAt < end }
-        let grouped = Dictionary(grouping: inRange) { tx -> Date in
-            unit == .hour
-                ? calendar.date(from: calendar.dateComponents([.year, .month, .day, .hour], from: tx.createdAt)) ?? tx.createdAt
-                : calendar.startOfDay(for: tx.createdAt)
-        }
-
-        return grouped.map { bucketDate, txs in
-            var amounts: [String: Double] = [:]
-            for tx in txs {
-                let trimmed = tx.categoryName?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let name = (trimmed?.isEmpty == false ? trimmed! : nil) ?? String(localized: "Uncategorized")
-                let resolved = knownNames.contains(name) ? name : String(localized: "Other")
-                amounts[resolved, default: 0] += NSDecimalNumber(decimal: tx.amount).doubleValue
-            }
-            return CategoryStackedBucket(date: bucketDate, amountsByCategory: amounts)
-        }
-        .sorted { $0.date < $1.date }
-    }
-
-    func dayNavigatorLabel(for date: Date) -> String {
-        let day = Calendar.current.component(.day, from: date)
-        let ordinalDay = Self.ordinalFormatter.string(from: NSNumber(value: day)) ?? "\(day)"
-        return "\(Self.weekdayMonthFormatter.string(from: date)) \(ordinalDay)"
-    }
-
-    func rangeNavigatorLabel(from start: Date, to end: Date) -> String {
-        "\(Self.shortDayFormatter.string(from: start)) – \(Self.shortDayFormatter.string(from: end))"
-    }
-
     /// Total spent divided by days elapsed so far in the period — not the
     /// full period length, so it isn't deflated by days that haven't happened yet.
     var dailyAverageSpent: String {
@@ -240,27 +191,6 @@ class AnalyticsViewModel {
     private static let transactionDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd MMMM"
-        formatter.locale = Locale(identifier: "en_US")
-        return formatter
-    }()
-
-    private static let weekdayMonthFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM"
-        formatter.locale = Locale(identifier: "en_US")
-        return formatter
-    }()
-
-    private static let shortDayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        formatter.locale = Locale(identifier: "en_US")
-        return formatter
-    }()
-
-    private static let ordinalFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .ordinal
         formatter.locale = Locale(identifier: "en_US")
         return formatter
     }()
