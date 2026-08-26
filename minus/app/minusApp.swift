@@ -22,15 +22,20 @@ struct minusApp: App {
 
     init() {
         container = ModelContainerProvider.makeContainer()
+        let periodRepository = PeriodReportRepositoryImpl(context: container.mainContext)
         dependencies = AppDependencies(
             transactionRepository: TransactionRepositoryImpl(context: container.mainContext),
-            periodRepository: PeriodReportRepositoryImpl(context: container.mainContext),
+            periodRepository: periodRepository,
             splitModePreferenceRepository: UserDefaultsSplitModePreferenceRepository(),
             creditCardPreferenceRepository: UserDefaultsCreditCardPreferenceRepository()
         )
 
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         RecurringNotificationService.requestAuthorizationIfNeeded()
+
+        Task { @MainActor in
+            BudgetOverviewSnapshotWriter.refresh(activePeriod: try? await periodRepository.getActivePeriod())
+        }
     }
 
     var body: some Scene {

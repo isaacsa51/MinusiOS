@@ -9,10 +9,20 @@
 /* Begin PBXBuildFile section */
 		A54CB2E03022AA86003C10F6 /* SwiftThemeKit in Frameworks */ = {isa = PBXBuildFile; productRef = A54CB2DF3022AA86003C10F6 /* SwiftThemeKit */; };
 		A57CF0B8303EC78400FC7007 /* Minus.icon in Resources */ = {isa = PBXBuildFile; fileRef = A57CF0B7303EC78400FC7007 /* Minus.icon */; };
+		A57CF1A8303EF0E300FC7007 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A57CF1A7303EF0E300FC7007 /* WidgetKit.framework */; };
+		A57CF1AA303EF0E300FC7007 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A57CF1A9303EF0E300FC7007 /* SwiftUI.framework */; };
+		A57CF1BB303EF0E800FC7007 /* MinusWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A57CF1A5303EF0E300FC7007 /* MinusWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A595A892302857DA00D3BDC7 /* MinusTest.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = A595A891302857DA00D3BDC7 /* MinusTest.xctestplan */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		A57CF1B9303EF0E800FC7007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A5C9806A2FAD7C5D00B015FC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A57CF1A4303EF0E300FC7007;
+			remoteInfo = MinusWidgetExtension;
+		};
 		A595A89B3028580A00D3BDC7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A5C9806A2FAD7C5D00B015FC /* Project object */;
@@ -22,14 +32,50 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		A57CF1BC303EF0E800FC7007 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A57CF1BB303EF0E800FC7007 /* MinusWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		A57CF0B7303EC78400FC7007 /* Minus.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Minus.icon; sourceTree = "<group>"; };
+		A57CF1A5303EF0E300FC7007 /* MinusWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MinusWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A57CF1A7303EF0E300FC7007 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		A57CF1A9303EF0E300FC7007 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		A57CF1C6303EF64C00FC7007 /* MinusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MinusWidgetExtension.entitlements; sourceTree = "<group>"; };
 		A595A891302857DA00D3BDC7 /* MinusTest.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = MinusTest.xctestplan; sourceTree = "<group>"; };
 		A595A8973028580A00D3BDC7 /* minusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = minusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A5C980722FAD7C5D00B015FC /* minus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = minus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A57CF1BF303EF0E800FC7007 /* Exceptions for "MinusWidget" folder in "MinusWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A57CF1A4303EF0E300FC7007 /* MinusWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		A57CF1AB303EF0E300FC7007 /* MinusWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A57CF1BF303EF0E800FC7007 /* Exceptions for "MinusWidget" folder in "MinusWidgetExtension" target */,
+			);
+			path = MinusWidget;
+			sourceTree = "<group>";
+		};
 		A595A8983028580A00D3BDC7 /* minusTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = minusTests;
@@ -43,6 +89,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A57CF1A2303EF0E300FC7007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A57CF1AA303EF0E300FC7007 /* SwiftUI.framework in Frameworks */,
+				A57CF1A8303EF0E300FC7007 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A595A8943028580A00D3BDC7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -61,12 +116,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A57CF1A6303EF0E300FC7007 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A57CF1A7303EF0E300FC7007 /* WidgetKit.framework */,
+				A57CF1A9303EF0E300FC7007 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A5C980692FAD7C5D00B015FC = {
 			isa = PBXGroup;
 			children = (
+				A57CF1C6303EF64C00FC7007 /* MinusWidgetExtension.entitlements */,
 				A595A891302857DA00D3BDC7 /* MinusTest.xctestplan */,
 				A5C980742FAD7C5D00B015FC /* minus */,
 				A595A8983028580A00D3BDC7 /* minusTests */,
+				A57CF1AB303EF0E300FC7007 /* MinusWidget */,
+				A57CF1A6303EF0E300FC7007 /* Frameworks */,
 				A5C980732FAD7C5D00B015FC /* Products */,
 				A57CF0B7303EC78400FC7007 /* Minus.icon */,
 			);
@@ -77,6 +144,7 @@
 			children = (
 				A5C980722FAD7C5D00B015FC /* minus.app */,
 				A595A8973028580A00D3BDC7 /* minusTests.xctest */,
+				A57CF1A5303EF0E300FC7007 /* MinusWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -84,6 +152,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A57CF1A4303EF0E300FC7007 /* MinusWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A57CF1C0303EF0E800FC7007 /* Build configuration list for PBXNativeTarget "MinusWidgetExtension" */;
+			buildPhases = (
+				A57CF1A1303EF0E300FC7007 /* Sources */,
+				A57CF1A2303EF0E300FC7007 /* Frameworks */,
+				A57CF1A3303EF0E300FC7007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A57CF1AB303EF0E300FC7007 /* MinusWidget */,
+			);
+			name = MinusWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = MinusWidgetExtension;
+			productReference = A57CF1A5303EF0E300FC7007 /* MinusWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A595A8963028580A00D3BDC7 /* minusTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A595A89D3028580A00D3BDC7 /* Build configuration list for PBXNativeTarget "minusTests" */;
@@ -114,10 +204,12 @@
 				A5C9806E2FAD7C5D00B015FC /* Sources */,
 				A5C9806F2FAD7C5D00B015FC /* Frameworks */,
 				A5C980702FAD7C5D00B015FC /* Resources */,
+				A57CF1BC303EF0E800FC7007 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A57CF1BA303EF0E800FC7007 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A5C980742FAD7C5D00B015FC /* minus */,
@@ -140,6 +232,9 @@
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					A57CF1A4303EF0E300FC7007 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
 					A595A8963028580A00D3BDC7 = {
 						CreatedOnToolsVersion = 26.4.1;
 						TestTargetID = A5C980712FAD7C5D00B015FC;
@@ -170,11 +265,19 @@
 			targets = (
 				A5C980712FAD7C5D00B015FC /* minus */,
 				A595A8963028580A00D3BDC7 /* minusTests */,
+				A57CF1A4303EF0E300FC7007 /* MinusWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		A57CF1A3303EF0E300FC7007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A595A8953028580A00D3BDC7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -194,6 +297,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A57CF1A1303EF0E300FC7007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A595A8933028580A00D3BDC7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -211,6 +321,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A57CF1BA303EF0E800FC7007 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A57CF1A4303EF0E300FC7007 /* MinusWidgetExtension */;
+			targetProxy = A57CF1B9303EF0E800FC7007 /* PBXContainerItemProxy */;
+		};
 		A595A89C3028580A00D3BDC7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A5C980712FAD7C5D00B015FC /* minus */;
@@ -219,6 +334,68 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		A57CF1BD303EF0E800FC7007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = MinusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D79GDFM88C;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MinusWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MinusWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serranoie.ios.minus.MinusWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A57CF1BE303EF0E800FC7007 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = MinusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D79GDFM88C;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MinusWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MinusWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serranoie.ios.minus.MinusWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		A595A89E3028580A00D3BDC7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -393,8 +570,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Minus;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = minus/minus.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D79GDFM88C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -424,8 +603,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = Minus;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = minus/minus.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D79GDFM88C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -453,6 +634,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A57CF1C0303EF0E800FC7007 /* Build configuration list for PBXNativeTarget "MinusWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A57CF1BD303EF0E800FC7007 /* Debug */,
+				A57CF1BE303EF0E800FC7007 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		A595A89D3028580A00D3BDC7 /* Build configuration list for PBXNativeTarget "minusTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

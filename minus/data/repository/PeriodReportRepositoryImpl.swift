@@ -32,6 +32,7 @@ class PeriodReportRepositoryImpl: PeriodRepository {
 
         context.insert(entity)
         try context.save()
+        BudgetOverviewSnapshotWriter.refresh(activePeriod: try? await getActivePeriod())
     }
 
     func getPeriod(id: UUID) async throws -> PeriodKey? {
@@ -86,9 +87,10 @@ class PeriodReportRepositoryImpl: PeriodRepository {
         if let entity = try context.fetch(descriptor).first {
             entity.endDate = finalEndDate
             try context.save()
+            BudgetOverviewSnapshotWriter.refresh(activePeriod: try? await getActivePeriod())
         }
     }
-    
+
     private func mapToDomain(_ entity: PeriodEntity) -> PeriodKey {
         return PeriodKey(
             id: entity.id,

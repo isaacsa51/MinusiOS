@@ -23,7 +23,6 @@ class AnalyticsViewModel {
         self.getPeriodAnalyticsUseCase = GetPeriodAnalyticsUseCase(transactionRepository: transactionRepo)
     }
 
-    /// `periodId` nil shows the currently active budget period; a specific id shows a past one.
     func load(periodId: UUID? = nil) async {
         isLoading = true
         do {
@@ -69,18 +68,14 @@ class AnalyticsViewModel {
         "\(Int((fraction * 100).rounded()))%"
     }
 
-    /// Daily totals, chronological, for the highest/lowest-day tiles' background sparkline.
     var dailyTrendValues: [Double] {
         analytics.dailyTotals.map { NSDecimalNumber(decimal: $0.amount).doubleValue }
     }
 
-    /// Expense amounts, chronological, for the largest/smallest-expense tiles' background sparkline.
     var transactionTrendValues: [Double] {
         analytics.transactionAmounts.map { NSDecimalNumber(decimal: $0).doubleValue }
     }
 
-    /// Total spent divided by days elapsed so far in the period — not the
-    /// full period length, so it isn't deflated by days that haven't happened yet.
     var dailyAverageSpent: String {
         guard let period = displayedPeriod else { return formattedAmount(0) }
 
@@ -136,19 +131,14 @@ class AnalyticsViewModel {
         formattedAmount(cumulativeBuckets.map(\.total).max() ?? 0)
     }
 
-    /// The 50/30/20 method's savings slice: 20% of the period's budget.
     var idealSavings: Decimal {
         (displayedPeriod?.totalBudget ?? 0) * 0.20
     }
 
-    /// What's actually left once spending is subtracted — floored at 0
-    /// (overspending doesn't produce "negative savings" here, just 0).
     var actualSavings: Decimal {
         max(0, (displayedPeriod?.totalBudget ?? 0) - analytics.totalSpent)
     }
 
-    /// `actualSavings` as a fraction of `idealSavings`, uncapped (can exceed
-    /// 1 if the savings goal was beaten) — for the percentage label.
     var savingsAchievementRatio: Double {
         guard idealSavings > 0 else { return 0 }
         return NSDecimalNumber(decimal: actualSavings / idealSavings).doubleValue
@@ -162,7 +152,6 @@ class AnalyticsViewModel {
         "\(Int((savingsAchievementRatio * 100).rounded()))%"
     }
 
-    /// Projected balance if the 20% ideal is hit every period for ~6 periods.
     var sixPeriodProjectionText: String {
         let projected = idealSavings * 6
         return "\(formattedAmount(idealSavings)) \u{00D7} 6 = \(formattedAmount(projected))"

@@ -55,11 +55,15 @@ struct BudgetPillView: View {
 }
 
 #Preview {
-    VStack(spacing: 12) {
-        BudgetPillView(title: "For today", amount: "$1,270.23", pillColor: Color.minus.success, progress: 0.2)
-        BudgetPillView(title: "For today", amount: "$500.00", pillColor: .yellow, progress: 0.5)
-        BudgetPillView(title: "For today", amount: "$100.00", pillColor: .orange, progress: 0.8)
-        BudgetPillView(title: "Budget exceeded", amount: "$0", pillColor: .red, progress: 1.0, isExceeded: true)
+    ZStack {
+        LinearGradient(colors: [.blue, .purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+            .ignoresSafeArea()
+        VStack(spacing: 12) {
+            BudgetPillView(title: "For today", amount: "$1,270.23", pillColor: Color.minus.success, progress: 0.2)
+            BudgetPillView(title: "For today", amount: "$500.00", pillColor: .yellow, progress: 0.5)
+            BudgetPillView(title: "For today", amount: "$100.00", pillColor: .orange, progress: 0.8)
+            BudgetPillView(title: "Budget exceeded", amount: "$0", pillColor: .red, progress: 1.0, isExceeded: true)
+        }
+        .padding()
     }
-    .padding()
 }
