@@ -13,7 +13,7 @@ struct NewBudgetPeriodSheet: View {
 
             ScrollView {
                 VStack(spacing: 28) {
-                    Text("New Budget Period")
+                    Text(String(localized: "New Budget Period"))
                         .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(Color.minus.textPrimary)
                         .padding(.top, 16)
@@ -54,7 +54,7 @@ struct NewBudgetPeriodSheet: View {
                     Button {
                         Task { await viewModel.applyNewBudget() }
                     } label: {
-                        Text("Apply")
+                        Text(String(localized: "Apply"))
                             .font(.system(size: 18, weight: .bold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -72,27 +72,27 @@ struct NewBudgetPeriodSheet: View {
         .task {
             await viewModel.refreshCarryOverPreview()
         }
-        .alert("Error", isPresented: Binding(
+        .alert(String(localized: "Error"), isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
         )) {
-            Button("OK") { viewModel.errorMessage = nil }
+            Button(String(localized: "OK")) { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
         .confirmationDialog(
-            "Carry over remaining balance?",
+            String(localized: "Carry over remaining balance?"),
             isPresented: $viewModel.showCarryOverPrompt,
             titleVisibility: .visible
         ) {
-            Button("Yes, add \(carryOverAmountText)") {
+            Button(String(localized: "Yes, add \(carryOverAmountText)")) {
                 Task { await viewModel.confirmCarryOver(include: true) }
             }
-            Button("No, discard it") {
+            Button(String(localized: "No, discard it")) {
                 Task { await viewModel.confirmCarryOver(include: false) }
             }
         } message: {
-            Text("You have \(carryOverAmountText) left from your last period.")
+            Text(String(localized: "You have \(carryOverAmountText) left from your last period."))
         }
     }
 
@@ -115,11 +115,11 @@ struct NewBudgetPeriodSheet: View {
 
         switch preview.strategy {
         case .SPLIT_EQUALLY:
-            return "\(amountText) left over from your last period will be spread across every day of this one."
+            return String(localized: "\(amountText) left over from your last period will be spread across every day of this one.")
         case .ADD_TO_FIRST_DAY:
-            return "\(amountText) left over from your last period will be added to day one of this one."
+            return String(localized: "\(amountText) left over from your last period will be added to day one of this one.")
         case .ASK_ALWAYS:
-            return "You have \(amountText) left over from your last period. You'll be asked whether to add or discard it."
+            return String(localized: "You have \(amountText) left over from your last period. You'll be asked whether to add or discard it.")
         }
     }
 
@@ -166,7 +166,7 @@ struct NewBudgetPeriodSheet: View {
                     .foregroundStyle(Color.minus.textSecondary)
                     .frame(width: 24)
 
-                Text("Remaining")
+                Text(String(localized: "Remaining"))
                     .font(.body)
                     .foregroundStyle(Color.minus.textPrimary)
 
@@ -182,24 +182,39 @@ struct NewBudgetPeriodSheet: View {
     }
 
     private var currencyRow: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "circle.fill")
-                .font(.system(size: 18))
-                .foregroundStyle(Color.minus.textSecondary)
-                .frame(width: 24)
+        Menu {
+            ForEach(Currency.all) { currency in
+                Button {
+                    viewModel.formCurrency = currency
+                } label: {
+                    HStack {
+                        Text("\(currency.symbol) \(currency.code)")
+                        if viewModel.formCurrency == currency {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.minus.textSecondary)
+                    .frame(width: 24)
 
-            Text("Currency")
-                .font(.body)
-                .foregroundStyle(Color.minus.textPrimary)
+                Text(String(localized: "Currency"))
+                    .font(.body)
+                    .foregroundStyle(Color.minus.textPrimary)
 
-            Spacer()
+                Spacer()
 
-            Text("\(viewModel.formCurrency.symbol) \(viewModel.formCurrency.code)")
-                .font(.subheadline)
-                .foregroundStyle(Color.minus.textSecondary)
+                Text("\(viewModel.formCurrency.symbol) \(viewModel.formCurrency.code)")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.minus.textSecondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
     }
 }
 

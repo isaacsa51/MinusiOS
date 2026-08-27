@@ -7,51 +7,53 @@ import SwiftUI
 
 struct PeriodSpendingCard: View {
     var spentAmount: String = "$450.00"
-    var progress: Double = 0.3
+    var totalAmount: String = "$15,000"
     var availablePercentage: Int = 70
-    var pillColor: Color = Color.minus.primaryAction
+    var availableColor: Color = Color.minus.success
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(pillColor.opacity(0.15))
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(String(localized: "Spent"))
+                    .font(.subheadline)
+                    .foregroundStyle(Color.minus.textSecondary)
 
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(pillColor.opacity(0.35))
-                    .frame(width: geo.size.width * min(max(progress, 0), 1))
-
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(pillColor.opacity(0.5), lineWidth: 1)
-
-                VStack(alignment: .leading, spacing: 4) {
+                (
                     Text(spentAmount)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.minus.textPrimary)
-
-                    Text("Spent")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                    + Text(" / \(totalAmount)")
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Color.minus.textSecondary)
+                )
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            }
 
-                    Text("Available: \(availablePercentage)%")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Color.minus.textSecondary)
-                }
-                .padding(20)
+            Spacer(minLength: 12)
+
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(String(localized: "Available"))
+                    .font(.subheadline)
+                    .foregroundStyle(Color.minus.textSecondary)
+
+                Text("\(availablePercentage)%")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(availableColor)
             }
         }
-        .frame(height: 130)
-        .animation(.easeInOut(duration: 0.3), value: progress)
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.minus.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
 #Preview {
     VStack(spacing: 12) {
-        PeriodSpendingCard(spentAmount: "$450.00", progress: 0.3, availablePercentage: 70, pillColor: Color.minus.success)
-        PeriodSpendingCard(spentAmount: "$1,200.00", progress: 0.65, availablePercentage: 35, pillColor: .yellow)
-        PeriodSpendingCard(spentAmount: "$2,000.00", progress: 1.0, availablePercentage: 0, pillColor: .red)
+        PeriodSpendingCard(spentAmount: "$0.00", totalAmount: "$15,000", availablePercentage: 100, availableColor: Color.minus.success)
+        PeriodSpendingCard(spentAmount: "$1,200.00", totalAmount: "$3,000", availablePercentage: 35, availableColor: .yellow)
+        PeriodSpendingCard(spentAmount: "$2,000.00", totalAmount: "$2,000", availablePercentage: 0, availableColor: .red)
     }
     .padding()
     .background(Color.minus.background)

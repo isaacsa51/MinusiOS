@@ -155,6 +155,16 @@ class BudgetPeriodViewModel {
         return "\(symbol)\(formatter.string(from: spentInPeriod as NSDecimalNumber) ?? "0.00")"
     }
 
+    var periodTotalBudgetAmount: String {
+        guard let period = activePeriod else { return "$0" }
+        let symbol = Currency.find(byCode: period.currency)?.symbol ?? "$"
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 0
+        return "\(symbol)\(formatter.string(from: period.totalBudget as NSDecimalNumber) ?? "0")"
+    }
+
     var periodPillColor: Color {
         guard activePeriod != nil else { return Color.minus.textSecondary }
         return Color.spendingHeat(periodSpendingProgress)

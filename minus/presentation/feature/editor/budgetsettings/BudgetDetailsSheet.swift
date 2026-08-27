@@ -17,30 +17,25 @@ struct BudgetDetailsSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 8) {
-                    
-                    PeriodSpendingCard(
-                        spentAmount: viewModel.periodSpentAmount,
-                        progress: viewModel.periodSpendingProgress,
-                        availablePercentage: viewModel.periodAvailablePercentage,
-                        pillColor: viewModel.periodPillColor
-                    )
-                    
-                    Grid(horizontalSpacing: 12, verticalSpacing: 0) {
-                        GridRow(alignment: .top) {
-                            SummaryCardView(period: viewModel.activePeriod)
-                                .gridCellColumns(2)
-                            DaysRemainingGaugeCard(period: viewModel.activePeriod)
-                        }
+                VStack(spacing: 28) {
+                    VStack(spacing: 12) {
+                        PeriodSpendingCard(
+                            spentAmount: viewModel.periodSpentAmount,
+                            totalAmount: viewModel.periodTotalBudgetAmount,
+                            availablePercentage: viewModel.periodAvailablePercentage,
+                            availableColor: viewModel.periodPillColor
+                        )
+
+                        BudgetSummaryCard(period: viewModel.activePeriod)
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("How do you want to split your budget?")
+                        Text(String(localized: "How do you want to split your budget?"))
                             .font(.subheadline)
                             .foregroundStyle(Color.minus.textSecondary)
                             .padding(.horizontal, 4)
 
-                        Picker("Split budget", selection: Binding(
+                        Picker(String(localized: "Split budget"), selection: Binding(
                             get: { viewModel.selectedSplitMode },
                             set: { viewModel.updateSplitMode($0) }
                         )) {
@@ -57,8 +52,6 @@ struct BudgetDetailsSheet: View {
                         ) {}
                         .allowsHitTesting(false)
                     }
-                    
-                    Divider()
 
                     VStack(spacing: 12) {
                         if let bannerText = carryOverBannerText {
@@ -68,7 +61,7 @@ struct BudgetDetailsSheet: View {
                         Button(role: .destructive) {
                             showEndPeriodAlert = true
                         } label: {
-                            Text("End savings period early")
+                            Text(String(localized: "End savings period early"))
                                 .font(.system(size: 16, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
@@ -81,7 +74,7 @@ struct BudgetDetailsSheet: View {
                 .padding(20)
             }
             .background(Color.minus.background.ignoresSafeArea())
-            .navigationTitle("Period Details")
+            .navigationTitle(String(localized: "Period Details"))
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await viewModel.loadSpending()
@@ -93,41 +86,44 @@ struct BudgetDetailsSheet: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(Color.minus.textSecondary)
                     }
+                    .accessibilityLabel(String(localized: "Close"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         viewModel.populateFormFromActivePeriod()
                         showEditBudgetSheet = true
                     } label: {
-                        Image(systemName: "pencil.circle.fill")
+                        Image(systemName: "pencil")
                             .foregroundStyle(Color.minus.textSecondary)
                     }
+                    .accessibilityLabel(String(localized: "Edit budget"))
                 }
             }
             .sheet(isPresented: $showEditBudgetSheet) {
                 NewBudgetPeriodSheet(viewModel: viewModel)
             }
-            .alert("Error", isPresented: Binding(
+            .alert(String(localized: "Error"), isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
             )) {
-                Button("OK") { viewModel.errorMessage = nil }
+                Button(String(localized: "OK")) { viewModel.errorMessage = nil }
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
+            
             // generate "alert dialog" for ending early the period
             .presentationSizing(.fitted)
-            .confirmationDialog("End current period?", isPresented: $showEndPeriodAlert, titleVisibility: .visible) {
-                Button("End and start a new one", role: .destructive) {
+            .confirmationDialog(String(localized: "End current period?"), isPresented: $showEndPeriodAlert, titleVisibility: .visible) {
+                Button(String(localized: "End and start a new one"), role: .destructive) {
                     Task {
                         await viewModel.finishPeriodEarly()
                     }
                     dismiss()
                 }
 
-                Button("Cancel", role: .cancel) { }
+                Button(String(localized: "Cancel"), role: .cancel) { }
             } message: {
-                Text("This will close out this period's history and ask you for the new period's details.")
+                Text(String(localized: "This will close out this period's history and ask you for the new period's details."))
             }
         }
     }
@@ -145,11 +141,11 @@ struct BudgetDetailsSheet: View {
 
         switch preview.strategy {
         case .SPLIT_EQUALLY:
-            return "You have \(amountText) left unspent. When this period ends, it will be spread across every day of your next budget."
+            return String(localized: "You have \(amountText) left unspent. When this period ends, it will be spread across every day of your next budget.")
         case .ADD_TO_FIRST_DAY:
-            return "You have \(amountText) left unspent. When this period ends, it will be added to the first day of your next budget."
+            return String(localized: "You have \(amountText) left unspent. When this period ends, it will be added to the first day of your next budget.")
         case .ASK_ALWAYS:
-            return "You have \(amountText) left unspent. You'll be asked whether to add or discard it when you create your next budget."
+            return String(localized: "You have \(amountText) left unspent. You'll be asked whether to add or discard it when you create your next budget.")
         }
     }
 
