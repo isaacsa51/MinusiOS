@@ -62,7 +62,8 @@ extension PeriodKey {
         ).getPeriodEndDate()
     }
 
-    func splitAmount(for mode: BudgetPeriod, dailyRate: Decimal, referenceDate: Date = Date()) -> Decimal {
+    /// How many days the pill's window covers, never more than the period itself.
+    func windowDays(for mode: BudgetPeriod) -> Int {
         let totalDays = max(1, daysInPeriod)
 
         let multiplier: Int
@@ -72,17 +73,23 @@ extension PeriodKey {
         case .biweekly: multiplier = 14
         case .monthly: multiplier = totalDays
         }
-        let windowDays = min(multiplier, totalDays)
+        return min(multiplier, totalDays)
+    }
 
+    /// Whether `referenceDate` still falls inside the period's opening window —
+    /// the only one an `ADD_TO_FIRST_DAY` carry-over is paid out in.
+    func isFirstWindow(for mode: BudgetPeriod, referenceDate: Date = Date()) -> Bool {
         let calendar = Calendar.current
         let daysSinceStart = calendar.dateComponents(
             [.day],
             from: calendar.startOfDay(for: startDate),
             to: calendar.startOfDay(for: referenceDate)
         ).day ?? 0
-        let isFirstWindow = daysSinceStart >= 0 && daysSinceStart < windowDays
-        let bonus = isFirstWindow ? carryOverAmount : 0
+        return daysSinceStart >= 0 && daysSinceStart < windowDays(for: mode)
+    }
 
-        return dailyRate * Decimal(windowDays) + bonus
+    func splitAmount(for mode: BudgetPeriod, dailyRate: Decimal, referenceDate: Date = Date()) -> Decimal {
+        let bonus = isFirstWindow(for: mode, referenceDate: referenceDate) ? carryOverAmount : 0
+        return dailyRate * Decimal(windowDays(for: mode)) + bonus
     }
 }

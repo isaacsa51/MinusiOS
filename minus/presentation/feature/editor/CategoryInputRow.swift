@@ -33,11 +33,16 @@ struct CategoryInputRow: View {
                 Image(systemName: "tag")
                     .font(.system(size: 14))
                     .foregroundStyle(Color.minus.textSecondary)
+                // Single line always; fixedSize makes the field hug its
+                // content width instead of wrapping, so the capsule grows
+                // wider as you type rather than growing taller.
                 TextField("Category", text: Bindable(viewModel).categoryText)
                     .font(.system(size: 15))
                     .foregroundStyle(Color.minus.textPrimary)
                     .textInputAutocapitalization(.words)
                     .submitLabel(.done)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .focused($isInputFocused)
 
                 if isInputFocused {
@@ -52,9 +57,17 @@ struct CategoryInputRow: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .frame(minHeight: CategoryBadgeView.height)
             .background(Color.minus.surface)
             .clipShape(Capsule())
-            .frame(maxWidth: isInputFocused ? .infinity : 140)
+            // No maxWidth cap when unfocused: the capsule sizes to its
+            // content (via fixedSize above) down to this minimum, and
+            // layoutPriority makes it win space over the chip scroll view
+            // — which just shows fewer chips (still reachable by scrolling)
+            // as the input claims more of the row instead of either
+            // truncating the input or wrapping its text.
+            .frame(minWidth: 140, maxWidth: isInputFocused ? .infinity : nil)
+            .layoutPriority(1)
         }
         .animation(.easeInOut(duration: 0.2), value: isInputFocused)
         .padding(.horizontal, 16)

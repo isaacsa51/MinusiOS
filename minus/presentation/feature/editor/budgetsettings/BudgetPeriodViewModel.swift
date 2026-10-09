@@ -29,29 +29,45 @@ class BudgetPeriodViewModel {
     private(set) var spentInPeriod: Decimal = 0
     private var spentBeforeToday: Decimal = 0
 
+    /// Recurring charges due later in this period, set aside from the spendable
+    /// pool. Always `.empty` while the preference is off.
+    private(set) var reservedCharges: ReservedChargesBreakdown = .empty
+
     private let getCurrentPeriodUseCase: GetCurrentPeriodIdIUseCase
     private let createBudgetPeriodUseCase: CreateBudgetPeriodUseCase
     private let finishPeriodEarlyUseCase: FinishPeriodEarlyUseCase
+    private let calculateReservedChargesUseCase: CalculateReservedChargesUseCase
     private let transactionRepository: TransactionRepository
     private let splitModePreferenceRepository: SplitModePreferenceRepository
-    // deinit runs nonisolated even on a @MainActor class, so this token — a plain opaque
-    // handle that's safe to read/remove from any thread — can't be MainActor-isolated.
+    private let reservedChargesPreferenceRepository: ReservedChargesPreferenceRepository
+    // deinit runs nonisolated even on a @MainActor class, so these tokens — plain opaque
+    // handles that are safe to read/remove from any thread — can't be MainActor-isolated.
     nonisolated(unsafe) private var splitModeObserverToken: NSObjectProtocol?
+    nonisolated(unsafe) private var reservedChargesObserverToken: NSObjectProtocol?
 
-    init(periodRepo: PeriodRepository, transactionRepo: TransactionRepository, splitModePreferenceRepo: SplitModePreferenceRepository) {
+    init(
+        periodRepo: PeriodRepository,
+        transactionRepo: TransactionRepository,
+        splitModePreferenceRepo: SplitModePreferenceRepository,
+        reservedChargesPreferenceRepo: ReservedChargesPreferenceRepository
+    ) {
         self.getCurrentPeriodUseCase = GetCurrentPeriodIdIUseCase(repository: periodRepo)
         self.createBudgetPeriodUseCase = CreateBudgetPeriodUseCase(repository: periodRepo, transactionRepository: transactionRepo)
         self.finishPeriodEarlyUseCase = FinishPeriodEarlyUseCase(repository: periodRepo)
+        self.calculateReservedChargesUseCase = CalculateReservedChargesUseCase(transactionRepository: transactionRepo)
         self.transactionRepository = transactionRepo
         self.splitModePreferenceRepository = splitModePreferenceRepo
+        self.reservedChargesPreferenceRepository = reservedChargesPreferenceRepo
         if let saved = splitModePreferenceRepo.getSelectedSplitMode() {
             self.selectedSplitMode = saved
         }
         observeSplitModeChanges()
+        observeReservedChargesChanges()
     }
 
     deinit {
-        if let token = splitModeObserverToken {
+        for token in [splitModeObserverToken, reservedChargesObserverToken] {
+            guard let token else { continue }
             NotificationCenter.default.removeObserver(token)
         }
     }
@@ -71,6 +87,21 @@ class BudgetPeriodViewModel {
                 else { return }
                 self.selectedSplitMode = mode
                 await self.loadSpending()
+            }
+        }
+    }
+
+    // The toggle lives in Settings, which writes through its own repository
+    // instance — without this the pill would keep showing the old daily amount
+    // until the editor's `.task` happened to run again.
+    private func observeReservedChargesChanges() {
+        reservedChargesObserverToken = NotificationCenter.default.addObserver(
+            forName: .reserveUpcomingChargesDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.loadSpending()
             }
         }
     }
@@ -99,15 +130,34 @@ class BudgetPeriodViewModel {
         return rounded
     }
 
-    private var dynamicDailyRate: Decimal {
+    private var daysElapsedInPeriod: Int {
         guard let period = activePeriod else { return 0 }
         let calendar = Calendar.current
-        let periodStart = calendar.startOfDay(for: period.startDate)
-        let startOfToday = calendar.startOfDay(for: Date())
-        let daysElapsed = max(0, calendar.dateComponents([.day], from: periodStart, to: startOfToday).day ?? 0)
-        let remainingDays = max(1, period.daysInPeriod - daysElapsed)
-        let remainingBudget = (period.totalBudget - period.carryOverAmount) - spentBeforeToday
-        return remainingBudget / Decimal(remainingDays)
+        return max(0, calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: period.startDate),
+            to: calendar.startOfDay(for: Date())
+        ).day ?? 0)
+    }
+
+    private var remainingDaysInPeriod: Int {
+        guard let period = activePeriod else { return 1 }
+        return max(1, period.daysInPeriod - daysElapsedInPeriod)
+    }
+
+    /// What's actually divisible: the budget, less the lump held back for day
+    /// one, less what's already gone, less anything set aside for charges still
+    /// to come. Legitimately goes negative when those outrun the budget.
+    private var freeToSpendPool: Decimal {
+        guard let period = activePeriod else { return 0 }
+        return (period.totalBudget - period.carryOverAmount)
+            - spentBeforeToday
+            - reservedCharges.total
+    }
+
+    private var dynamicDailyRate: Decimal {
+        guard activePeriod != nil else { return 0 }
+        return freeToSpendPool / Decimal(remainingDaysInPeriod)
     }
 
     var pillAmount: String {
@@ -170,6 +220,133 @@ class BudgetPeriodViewModel {
         return Color.spendingHeat(periodSpendingProgress)
     }
 
+    /// One display row per recurring charge held back this period. Empty while
+    /// the preference is off, which is also what hides the section in the UI.
+    var reservedChargeRows: [ReservedChargeRow] {
+        reservedCharges.charges.map {
+            ReservedChargeRow(id: $0.id, name: $0.name, amount: formattedCurrency($0.amount))
+        }
+    }
+
+    var reservedChargesTotalAmount: String {
+        formattedCurrency(reservedCharges.total)
+    }
+
+    var budgetFormula: BudgetFormulaBreakdown? {
+        guard let period = activePeriod else { return nil }
+
+        let rate = dynamicDailyRate
+        let windowDays = period.windowDays(for: selectedSplitMode)
+        let dayOneBonus = period.isFirstWindow(for: selectedSplitMode) ? period.carryOverAmount : 0
+        let remaining = splitBudget - spentInSplit
+
+        var poolLines = [
+            BudgetFormulaLine(
+                label: String(localized: "Total budget"),
+                amount: formattedCurrency(period.totalBudget)
+            )
+        ]
+        if period.carryOverAmount > 0 {
+            poolLines.append(BudgetFormulaLine(
+                label: String(localized: "Held back for day one"),
+                amount: formattedCurrency(period.carryOverAmount),
+                sign: .minus
+            ))
+        }
+        if spentBeforeToday != 0 {
+            poolLines.append(BudgetFormulaLine(
+                label: String(localized: "Spent before today"),
+                amount: formattedCurrency(abs(spentBeforeToday)),
+                // Net income before today adds to the pool instead of draining it.
+                sign: spentBeforeToday > 0 ? .minus : .plus
+            ))
+        }
+        if reservedCharges.total > 0 {
+            poolLines.append(BudgetFormulaLine(
+                label: String(localized: "Set aside for upcoming charges"),
+                amount: reservedChargesTotalAmount,
+                sign: .minus
+            ))
+        }
+        poolLines.append(BudgetFormulaLine(
+            label: String(localized: "Free to spend"),
+            amount: formattedCurrency(freeToSpendPool),
+            sign: .equals
+        ))
+
+        var leftLines = [
+            BudgetFormulaLine(
+                label: splitWindowLabel(windowDays: windowDays),
+                amount: formattedCurrency(splitBudget - dayOneBonus)
+            )
+        ]
+        if dayOneBonus > 0 {
+            leftLines.append(BudgetFormulaLine(
+                label: String(localized: "Carried over to day one"),
+                amount: formattedCurrency(dayOneBonus),
+                sign: .plus
+            ))
+        }
+        if spentInSplit != 0 {
+            leftLines.append(BudgetFormulaLine(
+                label: String(localized: "What you spent"),
+                amount: formattedCurrency(abs(spentInSplit)),
+                sign: spentInSplit > 0 ? .minus : .plus
+            ))
+        }
+        leftLines.append(BudgetFormulaLine(
+            label: String(localized: "Total"),
+            amount: formattedCurrency(remaining),
+            sign: .equals
+        ))
+
+        let days = remainingDaysInPeriod
+        return BudgetFormulaBreakdown(
+            subtitle: "\(period.remainingStrategy.displayName) · \(selectedSplitMode.displayTitle)",
+            poolLines: poolLines,
+            numerator: formattedCurrency(freeToSpendPool),
+            denominator: days == 1 ? String(localized: "1 day") : String(localized: "\(days) days"),
+            dailyRate: formattedCurrency(rounded(rate)),
+            reservedCharges: reservedChargeRows,
+            reservedTotal: reservedChargesTotalAmount,
+            leftLines: leftLines,
+            total: formattedCurrency(remaining),
+            shortfallNote: remaining < 0 ? shortfallNote : nil
+        )
+    }
+
+    private func splitWindowLabel(windowDays: Int) -> String {
+        switch selectedSplitMode {
+        case .daily: return String(localized: "Budget for today")
+        case .weekly: return String(localized: "Budget for this week (\(windowDays) days)")
+        case .biweekly: return String(localized: "Budget for these two weeks (\(windowDays) days)")
+        case .monthly: return String(localized: "Budget for this period (\(windowDays) days)")
+        }
+    }
+
+    private var shortfallNote: String {
+        if reservedCharges.total > 0, freeToSpendPool < 0 {
+            return String(localized: "Charges still due outrun what's left in this period.")
+        }
+        return String(localized: "You've spent more than this allowance.")
+    }
+
+    private func rounded(_ value: Decimal) -> Decimal {
+        var result = Decimal()
+        var mutable = value
+        NSDecimalRound(&result, &mutable, 2, .plain)
+        return result
+    }
+
+    private func formattedCurrency(_ amount: Decimal) -> String {
+        let symbol = activePeriod.flatMap { Currency.find(byCode: $0.currency)?.symbol } ?? "$"
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return "\(symbol)\(formatter.string(from: amount as NSDecimalNumber) ?? "0.00")"
+    }
+
     func checkActivePeriod() async {
         isLoading = true
         do {
@@ -228,6 +405,12 @@ class BudgetPeriodViewModel {
                 .reduce(Decimal.zero) { total, tx in
                     tx.isIncome ? total - tx.amount : total + tx.amount
                 }
+
+            if reservedChargesPreferenceRepository.isReserveUpcomingChargesEnabled() {
+                reservedCharges = try await calculateReservedChargesUseCase.execute(period: period)
+            } else {
+                reservedCharges = .empty
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -319,4 +502,12 @@ class BudgetPeriodViewModel {
         formCurrency = Currency.find(byCode: period.currency) ?? Currency.all[0]
         formRemainingStrategy = period.remainingStrategy
     }
+}
+
+/// `ReservedCharge` flattened for display: ForEach needs an Identifiable
+/// element, and key paths can't address tuple members.
+struct ReservedChargeRow: Identifiable {
+    let id: UUID
+    let name: String
+    let amount: String
 }

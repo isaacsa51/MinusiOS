@@ -90,63 +90,13 @@ class RecurringNotificationService {
         subscriptionDay: Int?,
         referenceDate: Date = Date()
     ) -> Date? {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: referenceDate)
-        let anchor = calendar.startOfDay(for: startDate)
-
-        let due: Date?
-        switch frequency {
-        case .DAILY:
-            due = max(anchor, today)
-        case .WEEKLY:
-            due = nextOccurrence(ofWeekday: calendar.component(.weekday, from: anchor), onOrAfter: today, calendar: calendar)
-        case .BIWEEKLY:
-            due = nextBiweeklyOccurrence(anchor: anchor, onOrAfter: today, calendar: calendar)
-        case .MONTHLY:
-            let day = subscriptionDay ?? calendar.component(.day, from: anchor)
-            due = nextOccurrence(ofDayOfMonth: day, onOrAfter: today, calendar: calendar)
-        }
-
-        guard let due else { return nil }
-        if let endDate, due > calendar.startOfDay(for: endDate) { return nil }
-        return due
-    }
-
-    private static func nextOccurrence(ofWeekday weekday: Int, onOrAfter date: Date, calendar: Calendar) -> Date? {
-        var current = date
-        for _ in 0..<7 {
-            if calendar.component(.weekday, from: current) == weekday { return current }
-            guard let next = calendar.date(byAdding: .day, value: 1, to: current) else { return nil }
-            current = next
-        }
-        return nil
-    }
-
-    private static func nextBiweeklyOccurrence(anchor: Date, onOrAfter date: Date, calendar: Calendar) -> Date? {
-        guard anchor < date else { return anchor }
-        var current = anchor
-        var safety = 0
-        while current < date, safety < 2000 {
-            guard let next = calendar.date(byAdding: .day, value: 14, to: current) else { return nil }
-            current = next
-            safety += 1
-        }
-        return current
-    }
-
-    private static func nextOccurrence(ofDayOfMonth day: Int, onOrAfter date: Date, calendar: Calendar) -> Date? {
-        func candidate(for anchor: Date) -> Date? {
-            var components = calendar.dateComponents([.year, .month], from: anchor)
-            let daysInMonth = calendar.range(of: .day, in: .month, for: anchor)?.count ?? day
-            components.day = min(day, daysInMonth)
-            return calendar.date(from: components)
-        }
-
-        if let thisMonth = candidate(for: date), thisMonth >= date {
-            return thisMonth
-        }
-        guard let nextMonthAnchor = calendar.date(byAdding: .month, value: 1, to: date) else { return nil }
-        return candidate(for: nextMonthAnchor)
+        RecurrenceSchedule.nextOccurrence(
+            frequency: frequency,
+            anchor: startDate,
+            recurrentEndDate: endDate,
+            subscriptionDay: subscriptionDay,
+            onOrAfter: referenceDate
+        )
     }
 
     // MARK: - Formatting

@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var showCutoffPrompt = false
     @State private var cutoffDayInput = ""
     @State private var showFileImporter = false
+    @State private var reserveUpcomingCharges = false
 
     var body: some View {
         List {
@@ -80,6 +81,22 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Budget") {
+                Toggle("Reserve upcoming charges", isOn: Binding(
+                    get: { reserveUpcomingCharges },
+                    set: { newValue in
+                        reserveUpcomingCharges = newValue
+                        dependencies.reservedChargesPreferenceRepository
+                            .setReserveUpcomingChargesEnabled(newValue)
+                    }
+                ))
+                .tint(Color.minus.primaryAction)
+
+                Text("Sets aside every recurring charge due later in the current period from day one, instead of deducting each one on its due date. Your remaining budget and daily amount will only show what is truly free to spend.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Data") {
                 Button {
                     Task { await viewModel?.exportCSV() }
@@ -127,6 +144,8 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            reserveUpcomingCharges = dependencies.reservedChargesPreferenceRepository
+                .isReserveUpcomingChargesEnabled()
             guard viewModel == nil else { return }
             viewModel = SettingsViewModel(
                 periodRepo: dependencies.periodRepository,

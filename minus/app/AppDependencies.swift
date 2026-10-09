@@ -11,6 +11,7 @@ struct AppDependencies {
     let periodRepository: any PeriodRepository
     let splitModePreferenceRepository: any SplitModePreferenceRepository
     let creditCardPreferenceRepository: any CreditCardPreferenceRepository
+    let reservedChargesPreferenceRepository: any ReservedChargesPreferenceRepository
 }
 
 extension AppDependencies {
@@ -23,7 +24,8 @@ extension AppDependencies {
             transactionRepository: transactionRepository ?? TransactionRepositoryImpl(context: container.mainContext),
             periodRepository: periodRepository ?? PeriodReportRepositoryImpl(context: container.mainContext),
             splitModePreferenceRepository: UserDefaultsSplitModePreferenceRepository(),
-            creditCardPreferenceRepository: UserDefaultsCreditCardPreferenceRepository()
+            creditCardPreferenceRepository: UserDefaultsCreditCardPreferenceRepository(),
+            reservedChargesPreferenceRepository: UserDefaultsReservedChargesPreferenceRepository()
         )
     }
 }

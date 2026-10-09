@@ -53,6 +53,10 @@ struct BudgetDetailsSheet: View {
                         .allowsHitTesting(false)
                     }
 
+                    if !viewModel.reservedChargeRows.isEmpty {
+                        reservedChargesSection
+                    }
+
                     VStack(spacing: 12) {
                         if let bannerText = carryOverBannerText {
                             CarryOverInfoBanner(text: bannerText)
@@ -125,6 +129,54 @@ struct BudgetDetailsSheet: View {
             } message: {
                 Text(String(localized: "This will close out this period's history and ask you for the new period's details."))
             }
+        }
+    }
+
+    private var reservedChargesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(localized: "Set aside for upcoming charges"))
+                .font(.subheadline)
+                .foregroundStyle(Color.minus.textSecondary)
+                .padding(.horizontal, 4)
+
+            VStack(spacing: 10) {
+                ForEach(viewModel.reservedChargeRows) { row in
+                    HStack {
+                        Text(row.name)
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.minus.textPrimary)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 12)
+
+                        Text(row.amount)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.minus.textPrimary)
+                    }
+                }
+
+                Divider()
+
+                HStack {
+                    Text(String(localized: "Total reserved"))
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.minus.textSecondary)
+
+                    Spacer(minLength: 12)
+
+                    Text(viewModel.reservedChargesTotalAmount)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.minus.textPrimary)
+                }
+            }
+            .padding(16)
+            .background(Color.minus.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            Text(String(localized: "Held back from day one, so the amount above only shows what's truly free to spend."))
+                .font(.footnote)
+                .foregroundStyle(Color.minus.textSecondary)
+                .padding(.horizontal, 4)
         }
     }
 
@@ -209,7 +261,8 @@ private class PreviewTransactionRepository: TransactionRepository {
             let vm = BudgetPeriodViewModel(
                 periodRepo: PreviewPeriodRepository(),
                 transactionRepo: PreviewTransactionRepository(),
-                splitModePreferenceRepo: UserDefaultsSplitModePreferenceRepository()
+                splitModePreferenceRepo: UserDefaultsSplitModePreferenceRepository(),
+                reservedChargesPreferenceRepo: UserDefaultsReservedChargesPreferenceRepository()
             )
             vm.activePeriod = PeriodKey(
                 id: UUID(),

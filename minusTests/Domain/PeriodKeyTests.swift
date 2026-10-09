@@ -89,4 +89,40 @@ struct PeriodKeyTests {
         let expected = Calendar.current.date(byAdding: .day, value: 6, to: start)!
         #expect(Calendar.current.isDate(period.effectiveEndDate, inSameDayAs: expected))
     }
+
+    @Test func windowDaysMatchesTheModeAndCapsAtThePeriodLength() {
+        let period = PeriodKey(
+            id: UUID(), startDate: Date(timeIntervalSince1970: 0), endDate: nil,
+            mappingNode: .activeBucket, totalBudget: 500, currency: "USD",
+            remainingStrategy: .SPLIT_EQUALLY, periodType: .monthly, daysInPeriod: 10
+        )
+
+        #expect(period.windowDays(for: .daily) == 1)
+        #expect(period.windowDays(for: .weekly) == 7)
+        // Both the biweekly and monthly windows clamp to the 10-day period.
+        #expect(period.windowDays(for: .biweekly) == 10)
+        #expect(period.windowDays(for: .monthly) == 10)
+    }
+
+    @Test func isFirstWindowCoversExactlyTheOpeningWindow() {
+        let start = Date(timeIntervalSince1970: 0)
+        let period = PeriodKey(
+            id: UUID(), startDate: start, endDate: nil, mappingNode: .activeBucket,
+            totalBudget: 500, currency: "USD", remainingStrategy: .SPLIT_EQUALLY,
+            periodType: .monthly, daysInPeriod: 30
+        )
+        let calendar = Calendar.current
+        func day(_ offset: Int) -> Date {
+            calendar.date(byAdding: .day, value: offset, to: start)!
+        }
+
+        #expect(period.isFirstWindow(for: .daily, referenceDate: start))
+        #expect(period.isFirstWindow(for: .daily, referenceDate: day(1)) == false)
+
+        #expect(period.isFirstWindow(for: .weekly, referenceDate: day(6)))
+        #expect(period.isFirstWindow(for: .weekly, referenceDate: day(7)) == false)
+
+        // Before the period even starts is not its first window.
+        #expect(period.isFirstWindow(for: .daily, referenceDate: day(-1)) == false)
+    }
 }

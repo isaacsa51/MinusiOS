@@ -28,7 +28,8 @@ struct minusApp: App {
             transactionRepository: transactionRepository,
             periodRepository: periodRepository,
             splitModePreferenceRepository: UserDefaultsSplitModePreferenceRepository(),
-            creditCardPreferenceRepository: UserDefaultsCreditCardPreferenceRepository()
+            creditCardPreferenceRepository: UserDefaultsCreditCardPreferenceRepository(),
+            reservedChargesPreferenceRepository: UserDefaultsReservedChargesPreferenceRepository()
         )
 
         UNUserNotificationCenter.current().delegate = NotificationPresenter.shared

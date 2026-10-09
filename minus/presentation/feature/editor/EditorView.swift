@@ -14,6 +14,7 @@ struct EditorView: View {
     @State private var viewModel: EditorViewModel?
     @State private var budgetVM: BudgetPeriodViewModel?
     @State private var isShowingBudgetDetailsSheet = false
+    @State private var isShowingBudgetFormulaSheet = false
     @State private var isShowingHistorySheet = false
     @State private var amountDragOffset: CGFloat = 0
     @AppStorage("useCreditCardPayments") private var useCreditCardPayments = false
@@ -79,18 +80,30 @@ struct EditorView: View {
                             .buttonStyle(.plain)
                             .transition(.blurReplace)
                         } else {
-                            Button(action: {
+                            BudgetPillView(
+                                title: budgetVM?.pillTitle ?? "Loading...",
+                                amount: budgetVM?.pillAmount ?? "...",
+                                pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary,
+                                progress: budgetVM?.spendingProgress ?? 0,
+                                isExceeded: budgetVM?.isExceeded ?? false
+                            )
+                            .contentShape(Capsule())
+                            // Peer gestures rather than a Button plus a
+                            // simultaneous long press: a Button still fires its
+                            // action when the finger lifts after a long hold,
+                            // which would open both sheets at once.
+                            .onTapGesture {
                                 isShowingBudgetDetailsSheet = true
-                            }) {
-                                BudgetPillView(
-                                    title: budgetVM?.pillTitle ?? "Loading...",
-                                    amount: budgetVM?.pillAmount ?? "...",
-                                    pillColor: budgetVM?.pillColor ?? Color.minus.textSecondary,
-                                    progress: budgetVM?.spendingProgress ?? 0,
-                                    isExceeded: budgetVM?.isExceeded ?? false
-                                )
                             }
-                            .buttonStyle(.plain)
+                            .onLongPressGesture(minimumDuration: 0.45) {
+                                isShowingBudgetFormulaSheet = true
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityHint(Text("Opens the period sheet"))
+                            .accessibilityAction(named: Text("How it's calculated")) {
+                                isShowingBudgetFormulaSheet = true
+                            }
                             .transition(.blurReplace)
                         }
 
@@ -217,7 +230,8 @@ struct EditorView: View {
                 budgetVM = BudgetPeriodViewModel(
                     periodRepo: dependencies.periodRepository,
                     transactionRepo: dependencies.transactionRepository,
-                    splitModePreferenceRepo: dependencies.splitModePreferenceRepository
+                    splitModePreferenceRepo: dependencies.splitModePreferenceRepository,
+                    reservedChargesPreferenceRepo: dependencies.reservedChargesPreferenceRepository
                 )
             }
             let localBudgetVM = budgetVM
@@ -232,6 +246,14 @@ struct EditorView: View {
             if let vm = budgetVM {
                 BudgetDetailsSheet(viewModel: vm)
             }
+        }
+        .sheet(isPresented: $isShowingBudgetFormulaSheet) {
+            if let vm = budgetVM {
+                BudgetFormulaSheet(viewModel: vm)
+            }
+        }
+        .sensoryFeedback(trigger: isShowingBudgetFormulaSheet) { _, isPresented in
+            isPresented ? .impact(weight: .medium) : nil
         }
         .sheet(isPresented: Binding(
             get: { budgetVM?.showNewBudgetSheet ?? false },
