@@ -51,6 +51,9 @@ class ImportBackupUseCase {
         let columnIndex = Dictionary(uniqueKeysWithValues: header.enumerated().map { ($1, $0) })
 
         var metaFields: [String: String]?
+        // Past periods, keyed by their external (Android) id. Each carries the
+        // budget total and date range that nothing else in the file records.
+        var archivedRows: [String: [String: String]] = [:]
         var transactionRows: [[String: String]] = []
 
         for line in lines {
@@ -59,9 +62,14 @@ class ImportBackupUseCase {
             for (name, index) in columnIndex where index < fields.count {
                 row[name] = fields[index]
             }
-            if row["date"] == "__META__" {
+            switch row["date"] {
+            case "__META__":
                 metaFields = row
-            } else {
+            case "__ARCHIVED__":
+                if let externalId = Self.nonEmpty(row["period_id"]) {
+                    archivedRows[externalId] = row
+                }
+            default:
                 transactionRows.append(row)
             }
         }
@@ -75,10 +83,18 @@ class ImportBackupUseCase {
         if let metaFields, let currentExternalId = metaFields["current_period_id"], !currentExternalId.isEmpty {
             let localId = try await resolvedPeriodId(
                 forExternalId: currentExternalId,
-                fallback: { try self.periodFromMeta(metaFields, externalId: currentExternalId) },
+                fallback: { self.period(from: metaFields, externalId: currentExternalId) },
                 createdCount: &createdPeriods
             )
             periodIdCache[currentExternalId] = localId
+        }
+
+        for (externalId, row) in archivedRows where periodIdCache[externalId] == nil {
+            periodIdCache[externalId] = try await resolvedPeriodId(
+                forExternalId: externalId,
+                fallback: { self.period(from: row, externalId: externalId) },
+                createdCount: &createdPeriods
+            )
         }
 
         var importedCount = 0
@@ -103,7 +119,7 @@ class ImportBackupUseCase {
                             endDate: createdAt,
                             mappingNode: .activeBucket,
                             totalBudget: 0,
-                            currency: metaFields?["currency_code"] ?? "USD",
+                            currency: Self.nonEmpty(metaFields?["currency_code"]) ?? "USD",
                             remainingStrategy: .SPLIT_EQUALLY,
                             periodType: .monthly,
                             daysInPeriod: 30,
@@ -116,7 +132,10 @@ class ImportBackupUseCase {
             }
 
             let externalTransactionId = (row["id"]?.isEmpty == false) ? row["id"]! : UUID().uuidString
-            let categoryName = (row["comment"]?.isEmpty == false) ? row["comment"] : nil
+            // Android renamed this column to "category"; older iOS exports
+            // still say "comment".
+            let categoryName = Self.nonEmpty(row["category"]) ?? Self.nonEmpty(row["comment"])
+            let extraNote = Self.nonEmpty(row["extra_note"])
             let isRecurrent = row["is_recurrent"] == "1"
             let frequency = isRecurrent ? row["frequency"].flatMap(RecurrentFrequency.init(rawValue:)) : nil
             let recurrentEndDate = row["end_date"].flatMap { $0.isEmpty ? nil : Self.dateFormatter.date(from: $0) } ?? nil
@@ -138,7 +157,8 @@ class ImportBackupUseCase {
                     categoryName: categoryName,
                     isIncome: existing.isIncome,
                     isCreditCardCharge: isCreditCardCharge,
-                    isCreditCardPaid: isCreditCardPaid
+                    isCreditCardPaid: isCreditCardPaid,
+                    extraNote: extraNote
                 )
                 try await transactionRepository.save(transaction: updated)
                 updatedCount += 1
@@ -156,7 +176,8 @@ class ImportBackupUseCase {
                     categoryName: categoryName,
                     isIncome: false,
                     isCreditCardCharge: isCreditCardCharge,
-                    isCreditCardPaid: isCreditCardPaid
+                    isCreditCardPaid: isCreditCardPaid,
+                    extraNote: extraNote
                 )
                 try await transactionRepository.save(transaction: created)
                 importedCount += 1
@@ -186,14 +207,23 @@ class ImportBackupUseCase {
         return newPeriod.id
     }
 
-    private func periodFromMeta(_ meta: [String: String], externalId: String) throws -> PeriodKey {
-        let totalBudget = meta["budget_total"].flatMap { Decimal(string: $0) } ?? 0
-        let periodType = meta["budget_period"].flatMap { BudgetPeriod(rawValue: $0.lowercased()) } ?? .monthly
-        let startDate = meta["budget_start_date"].flatMap { Self.dateFormatter.date(from: $0) } ?? Date()
-        let endDate = meta["budget_end_date"].flatMap { Self.dateFormatter.date(from: $0) }
-        let currency = meta["currency_code"] ?? "USD"
-        let daysInPeriod = meta["days_in_period"].flatMap { Int($0) } ?? 30
-        let strategy = meta["remaining_budget_strategy"].flatMap { RemainingBudgetStrategy(rawValue: $0) } ?? .SPLIT_EQUALLY
+    /// Builds a period from either a `__META__` row (the active period) or an
+    /// `__ARCHIVED__` one (a closed period). Archived rows carry fewer columns,
+    /// so the gaps fall back to what the date range implies.
+    private func period(from fields: [String: String], externalId: String) -> PeriodKey {
+        let totalBudget = Self.nonEmpty(fields["budget_total"]).flatMap { Decimal(string: $0) } ?? 0
+        let periodType = Self.nonEmpty(fields["budget_period"])
+            .flatMap { BudgetPeriod(rawValue: $0.lowercased()) } ?? .monthly
+        let startDate = Self.nonEmpty(fields["budget_start_date"])
+            .flatMap { Self.dateFormatter.date(from: $0) } ?? Date()
+        let endDate = Self.nonEmpty(fields["budget_end_date"])
+            .flatMap { Self.dateFormatter.date(from: $0) }
+        let currency = Self.nonEmpty(fields["currency_code"]) ?? "USD"
+        let strategy = Self.nonEmpty(fields["remaining_budget_strategy"])
+            .flatMap { RemainingBudgetStrategy(rawValue: $0) } ?? .SPLIT_EQUALLY
+        let daysInPeriod = Self.nonEmpty(fields["days_in_period"]).flatMap { Int($0) }
+            ?? endDate.map { Self.inclusiveDayCount(from: startDate, to: $0) }
+            ?? 30
 
         return PeriodKey(
             id: UUID(),
@@ -207,6 +237,22 @@ class ImportBackupUseCase {
             daysInPeriod: daysInPeriod,
             externalId: externalId
         )
+    }
+
+    /// A present-but-blank CSV field means "absent", not "empty string".
+    private static func nonEmpty(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    private static func inclusiveDayCount(from start: Date, to end: Date) -> Int {
+        let calendar = Calendar.current
+        let days = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: start),
+            to: calendar.startOfDay(for: end)
+        ).day ?? 0
+        return max(1, days + 1)
     }
 
     private func parseCSVLine(_ line: String) -> [String] {

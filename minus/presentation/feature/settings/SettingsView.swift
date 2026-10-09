@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage("showPastPeriodExpenses") private var showPastPeriodExpenses = true
     @AppStorage("useCreditCardPayments") private var useCreditCardPayments = false
     @AppStorage("creditCardCutoffDay") private var creditCardCutoffDay = 0
+    @AppStorage("useTransactionNotes") private var useTransactionNotes = false
     @State private var viewModel: SettingsViewModel?
     @State private var showCutoffPrompt = false
     @State private var cutoffDayInput = ""
@@ -77,6 +78,15 @@ struct SettingsView: View {
                 }
 
                 Text("Mark your expenses as credit card charges from the numpad and track them by cutoff day.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Notes") {
+                Toggle("Add notes to transactions", isOn: $useTransactionNotes)
+                    .tint(Color.minus.primaryAction)
+
+                Text("Adds an optional note field under the category, so you can record what an expense was actually for. Notes you've already written stay visible in the history if you turn this off.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

@@ -14,6 +14,7 @@ struct PendingEditTransaction: Equatable {
     let categoryName: String?
     let date: Date
     let isIncome: Bool
+    let extraNote: String?
 }
 
 @Observable

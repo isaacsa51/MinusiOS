@@ -54,12 +54,14 @@ struct PeriodKey: Identifiable {
 
 extension PeriodKey {
     var effectiveEndDate: Date {
-        endDate ?? BudgetSettings(
-            totalBudget: totalBudget,
-            period: periodType,
-            startDate: startDate,
-            daysInPeriod: daysInPeriod
-        ).getPeriodEndDate()
+        if let endDate { return endDate }
+        // `daysInPeriod` is this period's already-resolved length. Routing
+        // through BudgetSettings would re-apply its create-time rule of
+        // rounding a requested length up to the period type's minimum, so a
+        // 14-day monthly period would report a 30-day span — contradicting the
+        // same `daysInPeriod` that windowDays(for:) and the daily-rate math use.
+        let days = Swift.max(1, daysInPeriod)
+        return Calendar.current.date(byAdding: .day, value: days - 1, to: startDate) ?? startDate
     }
 
     /// How many days the pill's window covers, never more than the period itself.

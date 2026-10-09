@@ -20,6 +20,7 @@ class EditorViewModel {
     private(set) var transactionMode: TransactionMode = .expense
     
     var categoryText: String = ""
+    var extraNoteText: String = ""
     
     private(set) var savedCategories: [Category] = []
     
@@ -91,7 +92,14 @@ class EditorViewModel {
         self.editTransactionUseCase = EditTransactionUseCase(repository: transactionRepo)
     }
     
-    func startEditing(id: UUID, amount: Double, categoryName: String?, date: Date, isIncome: Bool = false) {
+    func startEditing(
+        id: UUID,
+        amount: Double,
+        categoryName: String?,
+        date: Date,
+        isIncome: Bool = false,
+        extraNote: String? = nil
+    ) {
         editingTransactionId = id
         editingDate = date
         transactionMode = isIncome ? .income : .expense
@@ -104,6 +112,7 @@ class EditorViewModel {
         }
         rawAmount = result
         categoryText = categoryName ?? ""
+        extraNoteText = extraNote ?? ""
     }
     
     func processNumber(button: NumpadButtonArgs) {
@@ -303,6 +312,8 @@ class EditorViewModel {
         }
         let isIncome = transactionMode == .income
         let categoryId = UUID()
+        let trimmedNote = extraNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note: String? = trimmedNote.isEmpty ? nil : trimmedNote
         
         if let name = categoryName,
            !savedCategories.contains(where: { $0.name == name }) {
@@ -322,7 +333,10 @@ class EditorViewModel {
                         newAmount: amountValue,
                         newCategoryName: categoryName,
                         newDate: editingDate,
-                        newIsIncome: isIncome
+                        newIsIncome: isIncome,
+                        // Always .some: the editor shows the whole note, so an
+                        // emptied field means the user cleared it on purpose.
+                        newExtraNote: .some(note)
                     )
                     await loadSavedCategories()
                     await onTransactionSaved?()
@@ -345,7 +359,8 @@ class EditorViewModel {
                         isCreditCardCharge: isCreditCardCharge,
                         recurrentFrequency: frequency,
                         recurrentEndDate: endDate,
-                        subscriptionDay: dayOfMonth
+                        subscriptionDay: dayOfMonth,
+                        extraNote: note
                     )
                     await loadSavedCategories()
                     await onTransactionSaved?()
@@ -357,6 +372,7 @@ class EditorViewModel {
         
         rawAmount = "0"
         categoryText = ""
+        extraNoteText = ""
         editingTransactionId = nil
         editingDate = nil
         transactionMode = .expense
@@ -388,6 +404,7 @@ class EditorViewModel {
     func clearAll() {
         rawAmount = "0"
         categoryText = ""
+        extraNoteText = ""
         editingTransactionId = nil
         editingDate = nil
         transactionMode = .expense

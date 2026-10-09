@@ -22,24 +22,45 @@ class ExportBackupUseCase {
         let periodIdentities: [UUID: String] = Dictionary(
             uniqueKeysWithValues: allPeriods.map { ($0.id, $0.externalId ?? $0.id.uuidString) }
         )
+        let spentByPeriod = Dictionary(grouping: transactions, by: \.periodId)
+            .mapValues { txs in
+                txs.reduce(Decimal.zero) { $0 + ($1.isIncome ? -$1.amount : $1.amount) }
+            }
 
         var lines: [String] = [Self.header]
         if let activePeriod {
             lines.append(metaRow(for: activePeriod, creditCardCutoffDay: creditCardCutoffDay))
         }
+        // Past periods, newest first — without these a round trip would lose
+        // every budget the user has closed out, since nothing else in the file
+        // records a period's total or date range.
+        lines.append(contentsOf: allPeriods
+            .filter { $0.id != activePeriod?.id }
+            .map { archivedRow(for: $0, spent: spentByPeriod[$0.id] ?? 0, periodIdentities: periodIdentities) }
+        )
         lines.append(contentsOf: transactions.map { row(for: $0, periodIdentities: periodIdentities) })
 
         return lines.joined(separator: "\r\n")
     }
 
-    private static let header = [
-        "date", "amount", "comment", "is_recurrent", "frequency", "end_date", "sub_day",
+    /// Column order is a contract shared with the Android app — don't reorder,
+    /// and only ever append.
+    private static let columns = [
+        "date", "amount", "category", "extra_note", "is_recurrent", "frequency", "end_date", "sub_day",
         "id", "is_credit", "is_credit_paid", "period_id", "created_at",
         "budget_total", "budget_period", "budget_start_date", "budget_end_date",
         "currency_code", "days_in_period", "rollover_enabled", "rollover_carry_forward",
         "remaining_budget_strategy", "current_period_started_at_millis", "current_period_id",
         "credit_card_cutoff_day", "split_mode"
-    ].joined(separator: ",")
+    ]
+
+    private static let header = columns.joined(separator: ",")
+
+    /// Pads a partially-filled row out to the full column count.
+    private func padded(_ fields: [String]) -> String {
+        let filled = fields + Array(repeating: "", count: max(0, Self.columns.count - fields.count))
+        return filled.map(csvField).joined(separator: ",")
+    }
 
     private func row(for transaction: Transaction, periodIdentities: [UUID: String]) -> String {
         let date: String = Self.dateTimeFormatter.string(from: transaction.createdAt)
@@ -54,19 +75,37 @@ class ExportBackupUseCase {
         let periodId: String = periodIdentities[transaction.periodId] ?? transaction.periodId.uuidString
         let createdAt: String = String(millis(transaction.createdAt))
 
-        let fields: [String] = [
-            date, amount, comment, isRecurrent, frequency, endDate, subDay,
-            transaction.clientGeneratedId, isCredit, isCreditPaid, periodId, createdAt,
-            "", "", "", "", "", "", "", "", "", "", "", "", ""
-        ]
-        return fields.map(csvField).joined(separator: ",")
+        return padded([
+            date, amount, comment, transaction.extraNote ?? "", isRecurrent, frequency, endDate, subDay,
+            transaction.clientGeneratedId, isCredit, isCreditPaid, periodId, createdAt
+        ])
+    }
+
+    private func archivedRow(
+        for period: PeriodKey,
+        spent: Decimal,
+        periodIdentities: [UUID: String]
+    ) -> String {
+        padded([
+            "__ARCHIVED__",
+            amountString(spent, minimumFractionDigits: 2),
+            "", "", "", "", "", "", "", "", "",
+            periodIdentities[period.id] ?? period.id.uuidString,
+            String(millis(period.effectiveEndDate)),
+            amountString(period.totalBudget, minimumFractionDigits: 2),
+            period.periodType.rawValue.uppercased(),
+            Self.dateFormatter.string(from: period.startDate),
+            Self.dateFormatter.string(from: period.effectiveEndDate),
+            period.currency
+        ])
     }
 
     private func metaRow(for period: PeriodKey, creditCardCutoffDay: Int?) -> String {
         let hasCarryOver = period.carryOverAmount > 0 ? "1" : "0"
 
-        return [
-            "__META__", "", "", "", "", "", "", "", "", "", "", "",
+        return padded([
+            // 12 blanks: everything from "amount" through "created_at".
+            "__META__", "", "", "", "", "", "", "", "", "", "", "", "",
             amountString(period.totalBudget, minimumFractionDigits: 2),
             period.periodType.rawValue.uppercased(),
             Self.dateFormatter.string(from: period.startDate),
@@ -78,11 +117,8 @@ class ExportBackupUseCase {
             period.remainingStrategy.rawValue,
             String(millis(period.startDate)),
             period.externalId ?? period.id.uuidString,
-            creditCardCutoffDay.map(String.init) ?? "",
-            ""
-        ]
-        .map(csvField)
-        .joined(separator: ",")
+            creditCardCutoffDay.map(String.init) ?? ""
+        ])
     }
 
     private func millis(_ date: Date) -> Int64 {

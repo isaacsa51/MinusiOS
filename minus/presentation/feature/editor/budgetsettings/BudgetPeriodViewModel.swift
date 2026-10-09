@@ -42,6 +42,8 @@ class BudgetPeriodViewModel {
     private let reservedChargesPreferenceRepository: ReservedChargesPreferenceRepository
     // deinit runs nonisolated even on a @MainActor class, so these tokens — plain opaque
     // handles that are safe to read/remove from any thread — can't be MainActor-isolated.
+    // The compiler suggests plain `nonisolated` here, but @Observable rewrites these into
+    // accessors and rejects it: "cannot be applied to mutable stored properties".
     nonisolated(unsafe) private var splitModeObserverToken: NSObjectProtocol?
     nonisolated(unsafe) private var reservedChargesObserverToken: NSObjectProtocol?
 

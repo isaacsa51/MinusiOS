@@ -33,7 +33,8 @@ class TransactionRepositoryImpl: TransactionRepository {
             categoryName: transaction.categoryName,
             recurrentFrequency: transaction.recurrentFrequency?.rawValue,
             recurrentEndDate: transaction.recurrentEndDate,
-            subscriptionDay: transaction.subscriptionDay
+            subscriptionDay: transaction.subscriptionDay,
+            extraNote: transaction.extraNote
         )
         
         context.insert(entity)
@@ -147,7 +148,8 @@ class TransactionRepositoryImpl: TransactionRepository {
             categoryName: entity.categoryName,
             isIncome: entity.isIncome,
             isCreditCardCharge: entity.isCreditCardCharge,
-            isCreditCardPaid: entity.isCreditCardPaid
+            isCreditCardPaid: entity.isCreditCardPaid,
+            extraNote: entity.extraNote
         )
     }
 }

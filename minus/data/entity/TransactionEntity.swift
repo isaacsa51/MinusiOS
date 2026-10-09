@@ -25,6 +25,7 @@ class TransactionEntity {
     var recurrentFrequency: String?
     var recurrentEndDate: Date?
     var subscriptionDay: Int?
+    var extraNote: String?
 
     init(
         id: UUID,
@@ -40,7 +41,8 @@ class TransactionEntity {
         categoryName: String? = nil,
         recurrentFrequency: String? = nil,
         recurrentEndDate: Date? = nil,
-        subscriptionDay: Int? = nil
+        subscriptionDay: Int? = nil,
+        extraNote: String? = nil
     ) {
         self.id = id
         self.amount = amount
@@ -56,5 +58,6 @@ class TransactionEntity {
         self.recurrentFrequency = recurrentFrequency
         self.recurrentEndDate = recurrentEndDate
         self.subscriptionDay = subscriptionDay
+        self.extraNote = extraNote
     }
 }

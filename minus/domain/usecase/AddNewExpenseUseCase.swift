@@ -25,7 +25,8 @@ class AddNewExpenseUseCase {
         isCreditCardCharge: Bool = false,
         recurrentFrequency: RecurrentFrequency? = nil,
         recurrentEndDate: Date? = nil,
-        subscriptionDay: Int? = nil
+        subscriptionDay: Int? = nil,
+        extraNote: String? = nil
     ) async throws {
         guard amount > 0 else {
             throw TransactionError.invalidAmount
@@ -55,6 +56,7 @@ class AddNewExpenseUseCase {
             categoryName: categoryName,
             isIncome: isIncome,
             isCreditCardCharge: isCreditCardCharge,
+            extraNote: Self.normalized(extraNote)
         )
         
         try await repository.save(transaction: transaction)
@@ -70,5 +72,11 @@ class AddNewExpenseUseCase {
                 subscriptionDay: subscriptionDay
             )
         }
+    }
+
+    /// A blank note is no note — keeps whitespace out of the store.
+    private static func normalized(_ note: String?) -> String? {
+        let trimmed = note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

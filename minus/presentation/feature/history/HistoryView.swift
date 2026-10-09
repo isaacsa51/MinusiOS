@@ -9,7 +9,7 @@ import SwiftUI
 
 struct HistoryView: View {
     var activePeriodId: UUID?
-    var onEditTransaction: ((_ id: UUID, _ amount: Double, _ categoryName: String?, _ date: Date, _ isIncome: Bool) -> Void)?
+    var onEditTransaction: ((Transaction) -> Void)?
 
     @Environment(\.dependencies) private var dependencies
     @State private var viewModel: HistoryViewModel?
@@ -144,6 +144,7 @@ struct HistoryView: View {
                                 isIncome: tx.isIncome,
                                 isExpanded: expandedRowId == rowId,
                                 fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
+                                extraNote: tx.extraNote,
                                 onTap: {
                                     withAnimation(.easeInOut(duration: 0.25)) {
                                         if expandedRowId == rowId {
@@ -154,7 +155,7 @@ struct HistoryView: View {
                                     }
                                 },
                                 onEdit: {
-                                    onEditTransaction?(tx.id, NSDecimalNumber(decimal: tx.amount).doubleValue, tx.categoryName, tx.createdAt, tx.isIncome)
+                                    onEditTransaction?(tx)
                                 },
                                 onDelete: {
                                     deleteTransaction(id: tx.id)
@@ -223,6 +224,7 @@ struct HistoryView: View {
                     isIncome: tx.isIncome,
                     isExpanded: expandedRowId == rowId,
                     fullDate: Self.fullDateFormatter.string(from: tx.createdAt),
+                    extraNote: tx.extraNote,
                     onTap: {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             if expandedRowId == rowId {
@@ -233,7 +235,7 @@ struct HistoryView: View {
                         }
                     },
                     onEdit: {
-                        onEditTransaction?(tx.id, NSDecimalNumber(decimal: tx.amount).doubleValue, tx.categoryName, tx.createdAt, tx.isIncome)
+                        onEditTransaction?(tx)
                     },
                     onDelete: {
                         deleteTransaction(id: tx.id)
@@ -278,6 +280,7 @@ private struct TransactionRow: View {
     let isIncome: Bool
     let isExpanded: Bool
     let fullDate: String
+    let extraNote: String?
     let onTap: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -318,6 +321,10 @@ private struct TransactionRow: View {
                         DetailInfoRow(label: "Date", value: fullDate)
                         DetailInfoRow(label: "Category", value: categoryName)
                         DetailInfoRow(label: "Amount", value: amount)
+
+                        if let extraNote, !extraNote.isEmpty {
+                            DetailInfoRow(label: "Note", value: extraNote)
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
@@ -368,6 +375,7 @@ private struct DetailInfoRow: View {
             Text(value)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.minus.textPrimary)
+                .multilineTextAlignment(.trailing)
         }
     }
 }

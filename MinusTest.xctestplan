@@ -12,7 +12,13 @@
     "testTimeoutsEnabled" : true
   },
   "testTargets" : [
-
+    {
+      "target" : {
+        "containerPath" : "container:minus.xcodeproj",
+        "identifier" : "A595A8963028580A00D3BDC7",
+        "name" : "minusTests"
+      }
+    }
   ],
   "version" : 1
 }

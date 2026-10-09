@@ -17,9 +17,14 @@ struct HistoryScreen: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                HistoryView(activePeriodId: activePeriodId) { id, amount, categoryName, date, isIncome in
+                HistoryView(activePeriodId: activePeriodId) { tx in
                     router.pendingEditTransaction = PendingEditTransaction(
-                        id: id, amount: amount, categoryName: categoryName, date: date, isIncome: isIncome
+                        id: tx.id,
+                        amount: NSDecimalNumber(decimal: tx.amount).doubleValue,
+                        categoryName: tx.categoryName,
+                        date: tx.createdAt,
+                        isIncome: tx.isIncome,
+                        extraNote: tx.extraNote
                     )
                     router.popToRoot()
                 }

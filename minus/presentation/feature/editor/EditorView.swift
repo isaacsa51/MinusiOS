@@ -19,6 +19,7 @@ struct EditorView: View {
     @State private var amountDragOffset: CGFloat = 0
     @AppStorage("useCreditCardPayments") private var useCreditCardPayments = false
     @AppStorage("creditCardCutoffDay") private var creditCardCutoffDay = 0
+    @AppStorage("useTransactionNotes") private var useTransactionNotes = false
     @State private var showCreditCardCutoffPrompt = false
     @State private var creditCardCutoffDayInput = ""
 
@@ -214,6 +215,10 @@ struct EditorView: View {
 
                     CategoryInputRow(viewModel: viewModel)
 
+                    if useTransactionNotes {
+                        ExtraNoteInputRow(viewModel: viewModel)
+                    }
+
                     EditorNumpad(viewModel: viewModel)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
@@ -272,8 +277,15 @@ struct EditorView: View {
             }
         }
         .topSheet(isPresented: $isShowingHistorySheet) {
-            HistoryView(activePeriodId: budgetVM?.activePeriod?.id) { id, amount, categoryName, date, isIncome in
-                viewModel?.startEditing(id: id, amount: amount, categoryName: categoryName, date: date, isIncome: isIncome)
+            HistoryView(activePeriodId: budgetVM?.activePeriod?.id) { tx in
+                viewModel?.startEditing(
+                    id: tx.id,
+                    amount: NSDecimalNumber(decimal: tx.amount).doubleValue,
+                    categoryName: tx.categoryName,
+                    date: tx.createdAt,
+                    isIncome: tx.isIncome,
+                    extraNote: tx.extraNote
+                )
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                     isShowingHistorySheet = false
                 }
@@ -288,7 +300,7 @@ struct EditorView: View {
             guard let pending else { return }
             viewModel?.startEditing(
                 id: pending.id, amount: pending.amount, categoryName: pending.categoryName,
-                date: pending.date, isIncome: pending.isIncome
+                date: pending.date, isIncome: pending.isIncome, extraNote: pending.extraNote
             )
             router.pendingEditTransaction = nil
         }

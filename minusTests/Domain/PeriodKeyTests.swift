@@ -125,4 +125,17 @@ struct PeriodKeyTests {
         // Before the period even starts is not its first window.
         #expect(period.isFirstWindow(for: .daily, referenceDate: day(-1)) == false)
     }
+
+    @Test func effectiveEndDateHonoursADaysInPeriodBelowThePeriodTypeMinimum() {
+        let start = Date(timeIntervalSince1970: 0)
+        // A 14-day window that still calls itself monthly: the stored length
+        // wins, rather than being rounded up to a month.
+        let period = PeriodKey(
+            id: UUID(), startDate: start, endDate: nil, mappingNode: .activeBucket,
+            totalBudget: 1000, currency: "USD", remainingStrategy: .SPLIT_EQUALLY,
+            periodType: .monthly, daysInPeriod: 14
+        )
+        let expected = Calendar.current.date(byAdding: .day, value: 13, to: start)!
+        #expect(Calendar.current.isDate(period.effectiveEndDate, inSameDayAs: expected))
+    }
 }

@@ -23,6 +23,9 @@ struct Transaction: Identifiable {
     var isIncome: Bool = false
     var isCreditCardCharge: Bool = false
     var isCreditCardPaid: Bool = false
+    /// Free-text note, shown only while the transaction-notes setting is on.
+    /// Normalized to nil when blank.
+    var extraNote: String? = nil
 }
 
 enum RecurrentFrequency: String, CaseIterable {
